@@ -1,0 +1,3 @@
+#!/bin/bash
+
+elm-analyse -s -p 3001

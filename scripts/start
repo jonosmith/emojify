@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# node ./scripts/start.js
+
+ELM_DEBUGGER=true elm-app start

@@ -1,0 +1,21 @@
+/* Basic global styles only. Everything else to be defined in Elm */
+
+html {
+  height: 100%;
+}
+
+* {
+  font-family: Roboto, Helvetica Neue, Helvetica, Arial, sans-serif;
+}
+
+html,
+body,
+div[id="root"],
+.style-elements-root {
+  height: 100%;
+}
+
+/* Disable outline around focused elements */
+*:focus {
+  outline: none;
+}
