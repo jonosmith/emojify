@@ -1,10 +1,16 @@
-module Views.Elements.Alert exposing (..)
+module Views.Elements.Alert
+    exposing
+        ( attrs
+        , danger
+        , fill
+        , view
+        )
 
 {-| Simple reusable alert element for displaying feedback messages
 -}
 
-import Element exposing (Attribute, Element, button, el)
-import Element.Attributes as Attributes exposing (paddingLeft, paddingRight, paddingXY, vary, width)
+import Element exposing (Attribute, Element, el)
+import Element.Attributes as Attributes exposing (paddingXY, vary, width)
 import Styles exposing (Styles, Variations)
 import Views.Utils exposing (combineAttributes)
 

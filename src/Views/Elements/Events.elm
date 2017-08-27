@@ -1,20 +1,31 @@
-module Views.Elements.Events exposing (..)
+module Views.Elements.Events
+    exposing
+        ( Position
+        , onMouseDown
+        , onMouseMove
+        , onMouseUp
+        , positionDecoder
+        )
 
 {-| Extra element events not found in the core library
 -}
 
 import Element exposing (Attribute)
 import Element.Events as Events
-import Json.Decode exposing (int, string, float, Decoder, map)
-import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
-
-
-type Msg
-    = MouseMove Position
+import Json.Decode exposing (Decoder, int)
+import Json.Decode.Pipeline exposing (decode, required)
 
 
 type alias Position =
-    { clientX : Int, clientY : Int, layerX : Int, layerY : Int, pageX : Int, pageY : Int, screenX : Int, screenY : Int }
+    { clientX : Int
+    , clientY : Int
+    , layerX : Int
+    , layerY : Int
+    , pageX : Int
+    , pageY : Int
+    , screenX : Int
+    , screenY : Int
+    }
 
 
 positionDecoder : Decoder Position

@@ -1,7 +1,31 @@
-module Styles exposing (Styles(..), Variations(..), stylesheet)
+module Styles
+    exposing
+        ( Styles
+            ( Alert
+            , Button
+            , EditorContainer
+            , EditorOverlay
+            , ElementText
+            , HomeDropzone
+            , HomeDropzoneText
+            , None
+            , PageHeader
+            , Slider
+            , Textfield
+            )
+        , Variations
+            ( ButtonDisabled
+            , ButtonPrimary
+            , ButtonWide
+            , Danger
+            , HomeDropzoneHovering
+            , PageHeaderLink
+            )
+        , stylesheet
+        )
 
-import Color exposing (rgb, rgba)
-import Style exposing (..)
+import Color
+import Style exposing (StyleSheet, cursor, focus, hover, style, variation)
 import Style.Border as Border
 import Style.Color as Color
 import Style.Font as Font

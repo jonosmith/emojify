@@ -1,12 +1,12 @@
-module Scenes.Editor exposing (..)
+module Scenes.Editor exposing (ExternalMsg, Model, Msg, init, subscriptions, update, view)
 
 {-| Editor scene - responsible for manipulating the provided image and downloading it
 -}
 
 import Canvas exposing (Canvas, DrawOp(..), Error, Point, Size)
 import Color exposing (Color)
-import Element exposing (..)
-import Element.Attributes exposing (..)
+import Element exposing (Element, column, el, empty, row, text)
+import Element.Attributes exposing (center, clip, fill, height, inlineStyle, px, spacing, vary, verticalCenter, width)
 import Element.Events
 import Maybe exposing (Maybe(Just, Nothing))
 import Mouse
@@ -39,13 +39,13 @@ type alias Zoom =
     Float
 
 
+{-| Scene Model. Note, canvas is either nothing or a canvas with image already drawn
+-}
 type alias Model =
     { drag : Maybe Drag
     , position : Position
     , zoom : Zoom
     , outputSize : Int
-
-    {- Canvas with image already drawn -}
     , canvas : Maybe Canvas
     , hasImageLoadFailed : Bool
     }

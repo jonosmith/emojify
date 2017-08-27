@@ -1,12 +1,21 @@
-module Theme exposing (..)
+module Theme
+    exposing
+        ( Size(Large, Larger, Largest, Medium, Regular, Small, Smaller, Smallest)
+        , colorDanger
+        , colorDangerLight
+        , colorPrimary
+        , colorPrimaryDarker
+        , colorPrimaryDarkest
+        , colorPrimaryLighter
+        , colorSecondary
+        , colorSecondaryLighter
+        , colorSecondaryLightest
+        , colorTransparent
+        , fontSize
+        , fonts
+        )
 
-import Color exposing (..)
-import Element.Attributes exposing (..)
-
-
-type ColorTypes
-    = Primary
-    | Secondary
+import Color exposing (Color, rgb, rgba)
 
 
 type Size
@@ -18,15 +27,6 @@ type Size
     | Large
     | Larger
     | Largest
-
-
-type ColorScale
-    = Lightest
-    | Lighter
-    | Light
-    | Dark
-    | Darker
-    | Darkest
 
 
 colorPrimary : Color
@@ -79,32 +79,35 @@ colorTransparent =
     rgba 0 0 0 0.0
 
 
+fonts : List String
 fonts =
     [ "Roboto" ]
 
 
+fontSize : Size -> Float
 fontSize size =
-    case size of
-        Smallest ->
-            10
+    toFloat <|
+        case size of
+            Smallest ->
+                10
 
-        Smaller ->
-            12
+            Smaller ->
+                12
 
-        Small ->
-            14
+            Small ->
+                14
 
-        Regular ->
-            16
+            Regular ->
+                16
 
-        Medium ->
-            18
+            Medium ->
+                18
 
-        Large ->
-            24
+            Large ->
+                24
 
-        Larger ->
-            30
+            Larger ->
+                30
 
-        Largest ->
-            54
+            Largest ->
+                54

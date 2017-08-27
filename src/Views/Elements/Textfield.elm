@@ -1,9 +1,14 @@
-module Views.Elements.Textfield exposing (..)
+module Views.Elements.Textfield
+    exposing
+        ( onInput
+        , placeholder
+        , view
+        )
 
 {-| Simple reusable textfield element
 -}
 
-import Element exposing (Element, Attribute, inputText)
+import Element exposing (Attribute, Element, inputText)
 import Element.Attributes as Attributes
 import Element.Events as Events
 import Styles

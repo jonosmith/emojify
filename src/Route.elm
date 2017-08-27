@@ -1,4 +1,10 @@
-module Route exposing (..)
+module Route
+    exposing
+        ( Route(..)
+        , parseLocation
+        , routeToString
+        , routes
+        )
 
 import Navigation exposing (Location)
 import UrlParser as Url exposing ((</>), Parser, oneOf, parsePath, s, string)
@@ -32,12 +38,12 @@ routeToString route =
                 NotFoundRoute ->
                     []
     in
-        "/" ++ (String.join "/" pieces)
+    "/" ++ String.join "/" pieces
 
 
 parseLocation : Location -> Route
 parseLocation location =
-    case (parsePath routes location) of
+    case parsePath routes location of
         Just route ->
             route
 

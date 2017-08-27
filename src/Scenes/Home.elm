@@ -3,8 +3,21 @@ module Scenes.Home exposing (..)
 {-| Home scene - starting point for selecting an image to edit
 -}
 
-import Element exposing (..)
-import Element.Attributes exposing (..)
+import Element exposing (Attribute, Element, el, empty, label, node)
+import Element.Attributes
+    exposing
+        ( center
+        , fill
+        , height
+        , hidden
+        , multiple
+        , spacing
+        , toAttr
+        , type_
+        , vary
+        , verticalCenter
+        , width
+        )
 import Element.Events as Events
 import FileReader
     exposing
@@ -13,9 +26,8 @@ import FileReader
         , FileRef
         , NativeFile
         , parseDroppedFiles
-        , readAsDataUrl
         )
-import Json.Decode as Decode exposing (decodeString, decodeValue)
+import Json.Decode as Decode exposing (decodeValue)
 import Styles exposing (Styles)
 import Task
 
@@ -44,7 +56,9 @@ type DragState
 
 
 type alias Model =
-    { url : String, dragState : DragState }
+    { url : String
+    , dragState : DragState
+    }
 
 
 init : Model
@@ -122,12 +136,12 @@ update msg model =
                         Ok str ->
                             ImageSelected str
 
-                        option2 ->
+                        Err _ ->
                             NoOp
             in
             ( ( model, Cmd.none ), externalMsg )
 
-        FileData (Err err) ->
+        FileData (Err _) ->
             ( ( model, Cmd.none ), NoOp )
 
 

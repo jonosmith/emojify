@@ -1,6 +1,6 @@
-module Views.Utils exposing (..)
+module Views.Utils exposing (combineAttributes)
 
-import Element exposing (Element, Attribute)
+import Element exposing (Attribute)
 
 
 combineAttributes :
@@ -10,5 +10,5 @@ combineAttributes :
 combineAttributes nestedAttributes attributes =
     List.concat
         [ attributes
-        , (List.concat nestedAttributes)
+        , List.concat nestedAttributes
         ]

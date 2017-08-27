@@ -1,9 +1,18 @@
-module Views.Elements.Button exposing (..)
+module Views.Elements.Button
+    exposing
+        ( attrs
+        , disabled
+        , fill
+        , onClick
+        , primary
+        , view
+        , wide
+        )
 
 {-| Simple reusable button element
 -}
 
-import Element exposing (Element, Attribute, button, el)
+import Element exposing (Attribute, Element, button, el)
 import Element.Attributes as Attributes exposing (paddingLeft, paddingRight, paddingXY, vary, width)
 import Element.Events as Events
 import Styles exposing (Styles, Variations)
