@@ -1,13 +1,13 @@
 module Route
     exposing
-        ( Route(..)
+        ( Route(Editor, Home, NotFoundRoute)
         , parseLocation
         , routeToString
         , routes
         )
 
 import Navigation exposing (Location)
-import UrlParser as Url exposing ((</>), Parser, oneOf, parsePath, s, string)
+import UrlParser as Url exposing (Parser, oneOf, parsePath, s)
 
 
 type Route

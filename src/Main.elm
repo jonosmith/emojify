@@ -301,7 +301,7 @@ view model =
                 viewHome model
 
             Editor ->
-                Element.map SceneEditorMsg (Editor.view model.data.url model.scenes.editor)
+                Element.map SceneEditorMsg (Editor.view model.scenes.editor)
 
 
 viewHome : Model -> Element Styles Variations Msg

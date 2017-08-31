@@ -1,4 +1,12 @@
-module Scenes.Home exposing (..)
+module Scenes.Home
+    exposing
+        ( ExternalMsg(ImageSelected, NoOp)
+        , Model
+        , Msg
+        , init
+        , update
+        , view
+        )
 
 {-| Home scene - starting point for selecting an image to edit
 -}
