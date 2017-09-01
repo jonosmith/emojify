@@ -1,6 +1,6 @@
 module Scenes.Home
     exposing
-        ( ExternalMsg(ImageSelected, NoOp)
+        ( ExternalMsg(ImageUploaded, NoOp)
         , Model
         , Msg
         , init
@@ -12,46 +12,24 @@ module Scenes.Home
 -}
 
 import Element exposing (Attribute, Element, el, empty, label, node)
-import Element.Attributes
-    exposing
-        ( center
-        , fill
-        , height
-        , hidden
-        , multiple
-        , spacing
-        , toAttr
-        , type_
-        , vary
-        , verticalCenter
-        , width
-        )
+import Element.Attributes exposing (..)
 import Element.Events as Events
-import FileReader
-    exposing
-        ( Error
-        , FileContentDataUrl
-        , FileRef
-        , NativeFile
-        , parseDroppedFiles
-        )
+import FileReader exposing (Error, FileContentDataUrl, FileRef, NativeFile, parseDroppedFiles)
 import Json.Decode as Decode exposing (decodeValue)
 import Styles exposing (Styles)
 import Task
 
 
 type Msg
-    = UrlSet String
-    | EditImage
-    | DragEnter
+    = DragEnter
     | DragLeave
-    | FileUpload (List NativeFile)
-    | FileData (Result Error FileContentDataUrl)
+    | UploadFile (List NativeFile)
+    | FileDataUrlReadComplete (Result Error FileContentDataUrl)
 
 
 type ExternalMsg
     = NoOp
-    | ImageSelected String
+    | ImageUploaded String
 
 
 type DragState
@@ -64,24 +42,12 @@ type DragState
 
 
 type alias Model =
-    { url : String
-    , dragState : DragState
-    }
+    DragState
 
 
 init : Model
 init =
-    { url = "", dragState = Normal }
-
-
-setUrl : String -> Model -> Model
-setUrl url model =
-    { model | url = url }
-
-
-setDragState : DragState -> Model -> Model
-setDragState dragState model =
-    { model | dragState = dragState }
+    Normal
 
 
 
@@ -91,38 +57,24 @@ setDragState dragState model =
 update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update msg model =
     case msg of
-        UrlSet newUrl ->
-            let
-                newModel =
-                    model
-                        |> setUrl newUrl
-            in
-            ( ( newModel, Cmd.none ), NoOp )
-
-        EditImage ->
-            ( ( model, Cmd.none ), ImageSelected model.url )
-
         DragEnter ->
             let
                 newModel =
-                    model
-                        |> setDragState Hovering
+                    Hovering
             in
             ( ( newModel, Cmd.none ), NoOp )
 
         DragLeave ->
             let
                 newModel =
-                    model
-                        |> setDragState Normal
+                    Normal
             in
             ( ( newModel, Cmd.none ), NoOp )
 
-        FileUpload fileInstances ->
+        UploadFile fileInstances ->
             let
                 newModel =
-                    model
-                        |> setDragState Normal
+                    Normal
 
                 cmd =
                     case List.head fileInstances of
@@ -134,7 +86,7 @@ update msg model =
             in
             ( ( newModel, cmd ), NoOp )
 
-        FileData (Ok dataValue) ->
+        FileDataUrlReadComplete (Ok dataValue) ->
             let
                 decodedResult =
                     decodeValue Decode.string dataValue
@@ -142,14 +94,14 @@ update msg model =
                 externalMsg =
                     case decodedResult of
                         Ok str ->
-                            ImageSelected str
+                            ImageUploaded str
 
                         Err _ ->
                             NoOp
             in
             ( ( model, Cmd.none ), externalMsg )
 
-        FileData (Err _) ->
+        FileDataUrlReadComplete (Err _) ->
             ( ( model, Cmd.none ), NoOp )
 
 
@@ -162,7 +114,7 @@ loadData file =
     FileReader.readAsDataUrl file
         |> Task.map Ok
         |> Task.onError (Task.succeed << Err)
-        |> Task.perform FileData
+        |> Task.perform FileDataUrlReadComplete
 
 
 
@@ -177,8 +129,8 @@ view model =
         , onDragEnter DragEnter
         , onDragLeave DragLeave
         , onDragOver DragEnter
-        , onDrop FileUpload
-        , vary Styles.HomeDropzoneHovering (model.dragState == Hovering)
+        , onDrop UploadFile
+        , vary Styles.HomeDropzoneHovering (model == Hovering)
         ]
         viewContent
     <|
@@ -192,7 +144,7 @@ viewContent =
         , verticalCenter
         , height (fill 1.0)
         , spacing 40
-        , onDrop FileUpload
+        , onDrop UploadFile
         ]
         [ Element.el Styles.PageHeader [] (Element.text "Emojify")
         , Element.el Styles.HomeDropzoneText [] (Element.text "Drop an image to begin")
@@ -206,7 +158,7 @@ viewFileInput =
             [ hidden
             , type_ "file"
             , multiple False
-            , toAttr (FileReader.onFileChange FileUpload)
+            , toAttr (FileReader.onFileChange UploadFile)
             ]
             empty
 

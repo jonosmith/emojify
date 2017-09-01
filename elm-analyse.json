@@ -1,0 +1,8 @@
+{
+    "checks": {
+        "ImportAll": false
+    },
+    "excludedPaths": [
+        "src/Canvas.elm"
+    ]
+}

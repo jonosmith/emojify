@@ -4,7 +4,6 @@ module Scenes.Editor exposing (Model, Msg, init, subscriptions, update, view)
 -}
 
 import Canvas exposing (Canvas, DrawOp(DrawImage, Scale, Translate), Error, Point, Size)
-import Debug
 import Element exposing (Element, column, el, empty, row, text)
 import Element.Attributes exposing (center, clip, fill, height, inlineStyle, px, spacing, vary, verticalCenter, width)
 import Element.Events
@@ -23,7 +22,7 @@ import Views.Elements.Slider as Slider
 
 
 type Msg
-    = PositionChange Events.Position
+    = MousePositionChange Events.Position
     | DragStart Events.Position
     | DragEnd Mouse.Position
     | ZoomIn
@@ -35,14 +34,16 @@ type Msg
     | ImageDimensionsResponse ImageDimensions
 
 
-{-| Scene Model. Note, canvas is either nothing or a canvas with image already drawn
--}
+
+-- MODEL
+
+
 type alias Model =
     { drag : Maybe Drag
     , position : Position
     , zoom : Zoom
     , imageDimensions : ImageDimensions
-    , canvas : Maybe Canvas
+    , canvasWithImage : Maybe Canvas
     , hasImageLoadFailed : Bool
     }
 
@@ -90,7 +91,7 @@ init maybeUrl =
             , position = initPosition
             , zoom = 1.0
             , imageDimensions = initImageDimensions
-            , canvas = Nothing
+            , canvasWithImage = Nothing
             , hasImageLoadFailed = False
             }
 
@@ -121,6 +122,10 @@ initImageDimensions =
 initDrag : { start : Position, current : Position }
 initDrag =
     { start = initPosition, current = initPosition }
+
+
+
+-- Setters
 
 
 setPosition : Position -> Model -> Model
@@ -179,14 +184,14 @@ setDragCurrent x y model =
     { model | drag = Just newDrag }
 
 
-setZoom : Float -> Model -> Model
+setZoom : Zoom -> Model -> Model
 setZoom zoom model =
     { model | zoom = zoom }
 
 
-setCanvas : Maybe Canvas -> Model -> Model
-setCanvas canvas model =
-    { model | canvas = canvas }
+setCanvasWithImage : Maybe Canvas -> Model -> Model
+setCanvasWithImage canvasWithImage model =
+    { model | canvasWithImage = canvasWithImage }
 
 
 setHasImageLoadFailed : Bool -> Model -> Model
@@ -208,7 +213,7 @@ loadImage url =
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
-        PositionChange position ->
+        MousePositionChange position ->
             let
                 newModel =
                     case model.drag of
@@ -304,7 +309,7 @@ update msg model =
         DownloadImage ->
             let
                 imageDataUrl =
-                    case model.canvas of
+                    case model.canvasWithImage of
                         Just canvas ->
                             Canvas.toDataUrl settings.outputMimetype settings.outputQuality <|
                                 drawDownloadCanvas canvas model
@@ -321,7 +326,7 @@ update msg model =
             let
                 newModel =
                     model
-                        |> setCanvas (Just canvas)
+                        |> setCanvasWithImage (Just canvas)
             in
             ( newModel, Cmd.none )
 
@@ -392,7 +397,7 @@ viewMainEditor model =
         [ width (px (toFloat settings.containerSize))
         , height (px (toFloat settings.containerSize))
         , clip
-        , onMouseMove PositionChange
+        , onMouseMove MousePositionChange
         , onMouseDown DragStart
         ]
         (row Styles.None
@@ -429,7 +434,7 @@ viewImageOverlay =
 
 viewImage : Model -> Element Styles Styles.Variations Msg
 viewImage model =
-    case model.canvas of
+    case model.canvasWithImage of
         Just canvas ->
             viewImageCanvas canvas model
 
@@ -462,7 +467,7 @@ viewControls model =
             (toFloat settings.containerSize / maxImageDimension model.imageDimensions) * 4
 
         isCanvasLoaded =
-            case model.canvas of
+            case model.canvasWithImage of
                 Just _ ->
                     True
 
@@ -500,7 +505,7 @@ drawPreviewCanvas : Int -> Canvas -> Model -> Canvas
 drawPreviewCanvas outputSize canvas model =
     let
         drawOp =
-            Canvas.batch (mainDrawOperations outputSize canvas model)
+            Canvas.batch (mainDrawOperations canvas model)
     in
     Canvas.draw drawOp (Canvas.initialize (Size outputSize outputSize))
 
@@ -511,19 +516,22 @@ drawDownloadCanvas canvas model =
         scaleDownFactor =
             toFloat settings.outputSize / toFloat settings.containerSize
 
-        operations =
-            [ Scale scaleDownFactor scaleDownFactor ] ++ mainDrawOperations settings.containerSize canvas model
+        scaleDownOp =
+            Scale scaleDownFactor scaleDownFactor
+
+        mainDrawOps =
+            mainDrawOperations canvas model
 
         drawOp =
-            Canvas.batch operations
+            Canvas.batch (scaleDownOp :: mainDrawOps)
     in
     Canvas.draw drawOp (Canvas.initialize (Size settings.outputSize settings.outputSize))
 
 
-mainDrawOperations : Int -> Canvas -> Model -> List DrawOp
-mainDrawOperations outputSize canvas model =
+mainDrawOperations : Canvas -> Model -> List DrawOp
+mainDrawOperations canvas model =
     let
-        opOffsetImage =
+        offsetImage =
             let
                 ( dragOffsetX, dragOffsetY ) =
                     case model.drag of
@@ -543,16 +551,16 @@ mainDrawOperations outputSize canvas model =
             in
             Translate (Point x y)
 
-        opScaleImage =
+        scaleImage =
             Scale model.zoom model.zoom
 
-        opDrawImage =
+        drawImage =
             Canvas.At
                 (Point 0 0)
                 |> DrawImage
                     canvas
     in
-    [ opOffsetImage, opScaleImage, opDrawImage ]
+    [ offsetImage, scaleImage, drawImage ]
 
 
 

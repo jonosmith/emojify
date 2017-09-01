@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-{-| Main app entry point - wires up the sub models, updates and views
+{-| Main app entry point - wires up the models, updates and views in the sub modules
 -}
 
 import Element exposing (Element)
@@ -246,7 +246,7 @@ update msg model =
 updateHomeSceneExternalMsg : Home.ExternalMsg -> Model -> ( Model, Cmd Msg )
 updateHomeSceneExternalMsg msg model =
     case msg of
-        Home.ImageSelected imageUrl ->
+        Home.ImageUploaded imageUrl ->
             let
                 ( editorInitModel, editorInitCmd ) =
                     Editor.init (Just imageUrl)

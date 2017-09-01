@@ -8,7 +8,9 @@ port module Ports
 
 
 type alias ImageDimensions =
-    { width : Int, height : Int }
+    { width : Int
+    , height : Int
+    }
 
 
 {-| Forces a browser download of an image using the given image url
