@@ -455,6 +455,12 @@ viewImageCanvas canvas model =
 viewControls : Model -> Element Styles Styles.Variations Msg
 viewControls model =
     let
+        minZoom =
+            settings.zoomStep
+
+        maxZoom =
+            (toFloat settings.containerSize / maxImageDimension model.imageDimensions) * 4
+
         isCanvasLoaded =
             case model.canvas of
                 Just _ ->
@@ -469,8 +475,8 @@ viewControls model =
             []
             [ Slider.view
                 (fromFloat model.zoom)
-                [ Slider.min 0
-                , Slider.max 1
+                [ Slider.min minZoom
+                , Slider.max maxZoom
                 , Slider.step settings.zoomStep
                 , Slider.onChange ZoomChange
                 ]
@@ -556,13 +562,3 @@ mainDrawOperations outputSize canvas model =
 maxImageDimension : ImageDimensions -> Float
 maxImageDimension imageDimensions =
     toFloat (max imageDimensions.width imageDimensions.height)
-
-
-maxContainerDimension : Float
-maxContainerDimension =
-    toFloat settings.containerSize
-
-
-ratioImageToContainer : ImageDimensions -> Float
-ratioImageToContainer imageDimensions =
-    maxImageDimension imageDimensions / maxContainerDimension
