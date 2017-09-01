@@ -1,0 +1,26 @@
+{
+  "name": "emojify",
+  "version": "0.1.0",
+  "dependencies": {},
+  "devDependencies": {
+    "create-elm-app": "^1.3.0",
+    "elm-analyse": "^0.11.0",
+    "elm-github-install": "^1.4.0"
+  },
+  "scripts": {
+    "setup": "npm install && ./node_modules/.bin/elm-install",
+    "start": "ELM_DEBUGGER=true ./node_modules/.bin/elm-app start",
+    "analyse": "./node_modules/.bin/elm-analyse -s -p 3001",
+    "build": "./node_modules/.bin/elm-app build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonosmith/emojify.git"
+  },
+  "author": "Jonathan Smith",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/jonosmith/emojify/issues"
+  },
+  "homepage": "https://github.com/jonosmith/emojify#readme"
+}

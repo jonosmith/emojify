@@ -1,10 +1,10 @@
 # Emojify
 
-A simple app I built to learn [Elm](http://elm-lang.org/) that creates 128x128 emojis/icons from a given image file
+A simple app I built to learn [Elm](http://elm-lang.org/) that creates 128x128 emojis/icons from a given image file.
 
 
-## Installation
+## Setup
 
-This app makes use of packages containing native code, therefore to install packages use [elm-install](https://github.com/gdotdesign/elm-github-install).
+To setup, make sure you have node installed on your system then run `npm run setup`
 
-Start local dev server with `./scripts/start`
+To start the local dev server use `npm run start`
