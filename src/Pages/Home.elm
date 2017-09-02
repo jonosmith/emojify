@@ -1,4 +1,4 @@
-module Scenes.Home
+module Pages.Home
     exposing
         ( ExternalMsg(ImageUploaded, NoOp)
         , Model
@@ -130,7 +130,7 @@ view model =
         , onDragLeave DragLeave
         , onDragOver DragEnter
         , onDrop UploadFile
-        , vary Styles.HomeDropzoneHovering (model == Hovering)
+        , vary Styles.Hovering (model == Hovering)
         ]
         viewContent
     <|

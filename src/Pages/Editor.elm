@@ -1,4 +1,4 @@
-module Scenes.Editor exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Editor exposing (Model, Msg, init, subscriptions, update, view)
 
 {-| Editor scene - responsible for manipulating the provided image and downloading it
 -}

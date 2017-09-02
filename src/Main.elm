@@ -6,9 +6,9 @@ module Main exposing (main)
 import Element exposing (Element)
 import Html exposing (Html)
 import Navigation exposing (Location)
+import Pages.Editor as Editor
+import Pages.Home as Home
 import Route
-import Scenes.Editor as Editor
-import Scenes.Home as Home
 import Styles exposing (Styles, Variations, stylesheet)
 
 
@@ -17,35 +17,23 @@ import Styles exposing (Styles, Variations, stylesheet)
 
 type alias Model =
     { data : DataModel
-    , scenes : ScenesModel
+    , page : PageState
     }
 
 
-type alias ScenesModel =
-    { home : Home.Model
-    , editor : Editor.Model
-    }
-
-
-type Scenes
-    = Home
-    | Editor
+type PageState
+    = Home Home.Model
+    | Editor Editor.Model
 
 
 type alias DataModel =
     { location : Maybe Location
     , url : String
-    , isEditing : Bool
     }
 
 
 
 -- Setters
-
-
-setIsEditing : Bool -> DataModel -> DataModel
-setIsEditing isEditing dataModel =
-    { dataModel | isEditing = isEditing }
 
 
 setLocation : Maybe Location -> DataModel -> DataModel
@@ -56,13 +44,6 @@ setLocation location dataModel =
 setUrl : String -> DataModel -> DataModel
 setUrl url dataModel =
     { dataModel | url = url }
-
-
-setDataIsEditing : Bool -> Model -> Model
-setDataIsEditing isEditing model =
-    model.data
-        |> setIsEditing isEditing
-        |> asDataIn model
 
 
 setDataLocation : Location -> Model -> Model
@@ -93,95 +74,30 @@ asDataIn =
     flip setData
 
 
-setScenes : ScenesModel -> Model -> Model
-setScenes scenesModel model =
-    { model | scenes = scenesModel }
-
-
-asScenesIn : Model -> ScenesModel -> Model
-asScenesIn =
-    flip setScenes
-
-
-setEditor : Editor.Model -> ScenesModel -> ScenesModel
-setEditor editor scenesModel =
-    { scenesModel | editor = editor }
-
-
-setHome : Home.Model -> ScenesModel -> ScenesModel
-setHome home scenesModel =
-    { scenesModel | home = home }
-
-
-setScenesEditor : Editor.Model -> Model -> Model
-setScenesEditor editorModel model =
-    model.scenes
-        |> setEditor editorModel
-        |> asScenesIn model
-
-
-setScenesHome : Home.Model -> Model -> Model
-setScenesHome homeModel model =
-    model.scenes
-        |> setHome homeModel
-        |> asScenesIn model
+setPage : PageState -> Model -> Model
+setPage page model =
+    { model | page = page }
 
 
 
--- Derived
-
-
-currentScene : Maybe Location -> Scenes
-currentScene maybeLocation =
-    let
-        route =
-            case maybeLocation of
-                Just location ->
-                    Route.parseLocation location
-
-                Nothing ->
-                    Route.NotFoundRoute
-    in
-    case route of
-        Route.Home ->
-            Home
-
-        Route.Editor ->
-            Editor
-
-        Route.NotFoundRoute ->
-            Home
-
-
-
--- Init model
+-- INIT
 
 
 init : Location -> ( Model, Cmd Msg )
 init location =
     let
-        ( editorInitModel, editorInitCmd ) =
-            Editor.init Nothing
-
         model =
             { data =
                 { location = Just location
                 , url = ""
-                , isEditing = False
                 }
-            , scenes =
-                { home = Home.init
-                , editor = editorInitModel
-                }
+            , page = Home Home.init
             }
 
-        command =
-            Cmd.batch
-                [ Navigation.modifyUrl (Route.routeToString Route.Home)
-                , Cmd.map SceneEditorMsg editorInitCmd
-                ]
+        cmd =
+            Navigation.modifyUrl (Route.routeToString Route.Home)
     in
-    ( model, command )
+    ( model, cmd )
 
 
 
@@ -191,8 +107,8 @@ init location =
 type Msg
     = NoOp
     | SetRoute Location
-    | SceneHomeMsg Home.Msg
-    | SceneEditorMsg Editor.Msg
+    | PageHomeMsg Home.Msg
+    | PageEditorMsg Editor.Msg
     | EditImage
 
 
@@ -205,36 +121,46 @@ update msg model =
                     model
                         |> setDataLocation location
             in
-            ( newModel, Cmd.none )
+            goToNewPage location newModel
 
-        SceneHomeMsg sceneMsg ->
-            let
-                ( ( newSceneModel, newSceneCmd ), newSceneMsg ) =
-                    Home.update sceneMsg model.scenes.home
+        PageHomeMsg sceneMsg ->
+            case model.page of
+                Home homeModel ->
+                    let
+                        ( ( newPageModel, newSceneCmd ), newSceneMsg ) =
+                            Home.update sceneMsg homeModel
 
-                ( newModel, newCmd ) =
-                    model
-                        |> setScenesHome newSceneModel
-                        |> updateHomeSceneExternalMsg newSceneMsg
+                        ( newModel, newCmd ) =
+                            model
+                                |> setPage (Home newPageModel)
+                                |> updateHomeSceneExternalMsg newSceneMsg
 
-                newCommand =
-                    Cmd.batch
-                        [ Cmd.map SceneHomeMsg newSceneCmd
-                        , newCmd
-                        ]
-            in
-            ( newModel, newCommand )
+                        newCommand =
+                            Cmd.batch
+                                [ Cmd.map PageHomeMsg newSceneCmd
+                                , newCmd
+                                ]
+                    in
+                    ( newModel, newCommand )
 
-        SceneEditorMsg sceneMsg ->
-            let
-                ( newEditorModel, newSceneMsg ) =
-                    Editor.update sceneMsg model.scenes.editor
+                _ ->
+                    ( model, Cmd.none )
 
-                newModel =
-                    model
-                        |> setScenesEditor newEditorModel
-            in
-            ( newModel, newSceneMsg )
+        PageEditorMsg sceneMsg ->
+            case model.page of
+                Editor editorModel ->
+                    let
+                        ( newEditorModel, newSceneMsg ) =
+                            Editor.update sceneMsg editorModel
+
+                        newModel =
+                            model
+                                |> setPage (Editor newEditorModel)
+                    in
+                    ( newModel, newSceneMsg )
+
+                _ ->
+                    ( model, Cmd.none )
 
         EditImage ->
             ( model, Cmd.none )
@@ -248,25 +174,46 @@ updateHomeSceneExternalMsg msg model =
     case msg of
         Home.ImageUploaded imageUrl ->
             let
-                ( editorInitModel, editorInitCmd ) =
-                    Editor.init (Just imageUrl)
-
                 newModel =
                     model
                         |> setDataUrl imageUrl
-                        |> setDataIsEditing True
-                        |> setScenesEditor editorInitModel
 
                 newCmd =
-                    Cmd.batch
-                        [ Navigation.newUrl (Route.routeToString Route.Editor)
-                        , Cmd.map SceneEditorMsg editorInitCmd
-                        ]
+                    Navigation.newUrl (Route.routeToString Route.Editor)
             in
             ( newModel, newCmd )
 
         Home.NoOp ->
             ( model, Cmd.none )
+
+
+goToNewPage : Location -> Model -> ( Model, Cmd Msg )
+goToNewPage location model =
+    case Route.parseLocation location of
+        Route.Editor ->
+            let
+                ( editorInitModel, editorInitCmd ) =
+                    Editor.init (Just model.data.url)
+
+                newModel =
+                    model
+                        |> setPage (Editor editorInitModel)
+
+                newCmd =
+                    Cmd.map PageEditorMsg editorInitCmd
+            in
+            ( newModel, newCmd )
+
+        _ ->
+            let
+                homeInitModel =
+                    Home.init
+
+                newModel =
+                    model
+                        |> setPage (Home homeInitModel)
+            in
+            ( newModel, Cmd.none )
 
 
 
@@ -277,12 +224,12 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     let
         sceneSubscriptions =
-            case currentScene model.data.location of
-                Home ->
+            case model.page of
+                Home _ ->
                     Sub.none
 
-                Editor ->
-                    Sub.map SceneEditorMsg (Editor.subscriptions model.scenes.editor)
+                Editor editorModel ->
+                    Sub.map PageEditorMsg (Editor.subscriptions editorModel)
     in
     Sub.batch
         [ sceneSubscriptions
@@ -296,17 +243,17 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     Element.root stylesheet <|
-        case currentScene model.data.location of
-            Home ->
-                viewHome model
+        case model.page of
+            Home homeModel ->
+                viewHome homeModel
 
-            Editor ->
-                Element.map SceneEditorMsg (Editor.view model.scenes.editor)
+            Editor editorModel ->
+                Element.map PageEditorMsg (Editor.view editorModel)
 
 
-viewHome : Model -> Element Styles Variations Msg
+viewHome : Home.Model -> Element Styles Variations Msg
 viewHome model =
-    Element.map SceneHomeMsg (Home.view model.scenes.home)
+    Element.map PageHomeMsg (Home.view model)
 
 
 

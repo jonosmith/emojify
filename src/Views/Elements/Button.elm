@@ -40,7 +40,7 @@ attrs attributes =
 
 primary : List (Attribute Variations msg)
 primary =
-    [ vary Styles.ButtonPrimary True ]
+    [ vary Styles.Primary True ]
 
 
 wide : List (Attribute Variations msg)
@@ -58,7 +58,7 @@ fill =
 disabled : List (Attribute Variations msg)
 disabled =
     [ Attributes.disabled True
-    , vary Styles.ButtonDisabled True
+    , vary Styles.Disabled True
     ]
 
 
