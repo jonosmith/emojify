@@ -76,7 +76,7 @@ type alias Settings =
 settings : Settings
 settings =
     { containerSize = 300
-    , zoomStep = 0.01
+    , zoomStep = 0.001
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
@@ -128,37 +128,14 @@ initDrag =
 -- Setters
 
 
-setPosition : Position -> Model -> Model
-setPosition position model =
-    { model | position = position }
+setCanvasWithImage : Maybe Canvas -> Model -> Model
+setCanvasWithImage canvasWithImage model =
+    { model | canvasWithImage = canvasWithImage }
 
 
 setDrag : Maybe Drag -> Model -> Model
 setDrag drag model =
     { model | drag = drag }
-
-
-setDragStart : Int -> Int -> Model -> Model
-setDragStart x y model =
-    let
-        drag =
-            case model.drag of
-                Just dragModel ->
-                    dragModel
-
-                Nothing ->
-                    initDrag
-
-        start =
-            drag.start
-
-        newStart =
-            { start | x = x, y = y }
-
-        newDrag =
-            { drag | start = newStart }
-    in
-    { model | drag = Just newDrag }
 
 
 setDragCurrent : Int -> Int -> Model -> Model
@@ -184,14 +161,27 @@ setDragCurrent x y model =
     { model | drag = Just newDrag }
 
 
-setZoom : Zoom -> Model -> Model
-setZoom zoom model =
-    { model | zoom = zoom }
+setDragStart : Int -> Int -> Model -> Model
+setDragStart x y model =
+    let
+        drag =
+            case model.drag of
+                Just dragModel ->
+                    dragModel
 
+                Nothing ->
+                    initDrag
 
-setCanvasWithImage : Maybe Canvas -> Model -> Model
-setCanvasWithImage canvasWithImage model =
-    { model | canvasWithImage = canvasWithImage }
+        start =
+            drag.start
+
+        newStart =
+            { start | x = x, y = y }
+
+        newDrag =
+            { drag | start = newStart }
+    in
+    { model | drag = Just newDrag }
 
 
 setHasImageLoadFailed : Bool -> Model -> Model
@@ -199,15 +189,23 @@ setHasImageLoadFailed hasImageLoadFailed model =
     { model | hasImageLoadFailed = hasImageLoadFailed }
 
 
+setImageDimensions : ImageDimensions -> Model -> Model
+setImageDimensions imageDimensions model =
+    { model | imageDimensions = imageDimensions }
+
+
+setPosition : Position -> Model -> Model
+setPosition position model =
+    { model | position = position }
+
+
+setZoom : Zoom -> Model -> Model
+setZoom zoom model =
+    { model | zoom = zoom }
+
+
 
 -- UPDATE
-
-
-loadImage : String -> Cmd Msg
-loadImage url =
-    Task.attempt
-        ImageLoaded
-        (Canvas.loadImage url)
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -253,15 +251,9 @@ update msg model =
 
                                 yDragOffset =
                                     drag.start.y - drag.current.y
-
-                                x =
-                                    model.position.x - xDragOffset
-
-                                y =
-                                    model.position.y - yDragOffset
                             in
-                            { x = x
-                            , y = y
+                            { x = model.position.x - xDragOffset
+                            , y = model.position.y - yDragOffset
                             }
 
                         Nothing ->
@@ -343,9 +335,18 @@ update msg model =
         ImageDimensionsResponse imageDimensions ->
             let
                 newModel =
-                    { model | imageDimensions = imageDimensions }
+                    model
+                        |> setImageDimensions imageDimensions
+                        |> setZoom (defaultZoom imageDimensions)
             in
             ( newModel, Cmd.none )
+
+
+loadImage : String -> Cmd Msg
+loadImage url =
+    Task.attempt
+        ImageLoaded
+        (Canvas.loadImage url)
 
 
 
@@ -477,14 +478,16 @@ viewControls model =
     column Styles.None
         [ spacing 20, width (fill 1.0) ]
         [ row Styles.None
-            []
-            [ Slider.view
+            [ spacing 20 ]
+            [ Button.view [ Button.secondary, Button.onClick ZoomOut ] (text "-")
+            , Slider.view
                 (fromFloat model.zoom)
                 [ Slider.min minZoom
                 , Slider.max maxZoom
                 , Slider.step settings.zoomStep
                 , Slider.onChange ZoomChange
                 ]
+            , Button.view [ Button.secondary, Button.onClick ZoomIn ] (text "+")
             ]
         , row Styles.None
             []
@@ -564,9 +567,19 @@ mainDrawOperations canvas model =
 
 
 
--- Util
+-- UTIL
 
 
 maxImageDimension : ImageDimensions -> Float
 maxImageDimension imageDimensions =
     toFloat (max imageDimensions.width imageDimensions.height)
+
+
+ratioImageToContainer : ImageDimensions -> Float
+ratioImageToContainer imageDimensions =
+    toFloat settings.containerSize / maxImageDimension imageDimensions
+
+
+defaultZoom : ImageDimensions -> Float
+defaultZoom imageDimensions =
+    ratioImageToContainer imageDimensions

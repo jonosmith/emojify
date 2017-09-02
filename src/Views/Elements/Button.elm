@@ -5,6 +5,7 @@ module Views.Elements.Button
         , fill
         , onClick
         , primary
+        , secondary
         , view
         , wide
         )
@@ -41,6 +42,11 @@ attrs attributes =
 primary : List (Attribute Variations msg)
 primary =
     [ vary Styles.Primary True ]
+
+
+secondary : List (Attribute Variations msg)
+secondary =
+    [ vary Styles.Secondary True ]
 
 
 wide : List (Attribute Variations msg)

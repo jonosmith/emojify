@@ -19,6 +19,7 @@ module Styles
             , Hovering
             , PageHeaderLink
             , Primary
+            , Secondary
             , Wide
             )
         , stylesheet
@@ -28,10 +29,12 @@ module Styles
 -}
 
 import Color exposing (Color, rgb, rgba)
-import Style exposing (StyleSheet, cursor, focus, hover, style, variation)
+import Color.Manipulate exposing (darken, fadeOut, lighten)
+import Style exposing (StyleSheet, cursor, focus, hover, importCss, prop, pseudo, style, variation)
 import Style.Border as Border
 import Style.Color as Color
 import Style.Font as Font
+import Style.Shadow as Shadow
 
 
 type Styles
@@ -54,20 +57,17 @@ type Variations
     | Hovering
     | PageHeaderLink
     | Primary
+    | Secondary
     | Wide
 
 
 type alias Config =
     { color :
         { primary : Color
-        , primaryDarker : Color
-        , primaryDarkest : Color
         , secondary : Color
-        , secondaryLighter : Color
-        , secondaryLightest : Color
         , danger : Color
-        , dangerLight : Color
         , transparent : Color
+        , white : Color
         }
     , font :
         { fonts : List String
@@ -84,14 +84,10 @@ config : Config
 config =
     { color =
         { primary = rgb 34 184 207
-        , primaryDarker = rgb 21 170 191
-        , primaryDarkest = rgb 16 152 173
-        , secondary = rgb 51 58 64
-        , secondaryLighter = rgb 134 142 150
-        , secondaryLightest = rgb 233 236 239
+        , secondary = rgb 134 142 150
         , danger = rgb 255 107 107
-        , dangerLight = rgba 255 107 107 0.2
         , transparent = rgba 0 0 0 0.0
+        , white = Color.white
         }
     , font =
         { fonts = [ "Roboto" ]
@@ -109,12 +105,12 @@ stylesheet =
     Style.styleSheet
         [ style None []
         , style Alert
-            [ Font.size config.font.size.regular
+            [ Border.rounded 4.0
+            , Font.size config.font.size.regular
             , Font.typeface config.font.fonts
-            , Border.rounded 4.0
             , variation Danger
                 [ Color.text config.color.danger
-                , Color.background config.color.dangerLight
+                , Color.background (lighten 0.2 config.color.danger)
                 ]
             ]
         , style Button
@@ -127,21 +123,30 @@ stylesheet =
             , cursor "pointer"
             , hover
                 [ Color.background config.color.primary
-                , Color.text Color.white
+                , Color.text config.color.white
                 , Color.border config.color.transparent
                 ]
             , variation Primary
                 [ Color.background config.color.primary
-                , Color.text Color.white
+                , Color.text config.color.white
                 , hover
-                    [ Color.background config.color.primaryDarker ]
+                    [ Color.background (darken 0.1 config.color.primary) ]
                 , focus
-                    [ Color.background config.color.primaryDarkest
+                    [ Color.background (darken 0.2 config.color.primary)
+                    ]
+                ]
+            , variation Secondary
+                [ Color.background config.color.secondary
+                , Color.text config.color.white
+                , hover
+                    [ Color.background (darken 0.1 config.color.secondary) ]
+                , focus
+                    [ Color.background (darken 0.2 config.color.secondary)
                     ]
                 ]
             , variation Disabled
                 [ Color.background Color.darkGray
-                , Color.text Color.white
+                , Color.text config.color.white
                 ]
             ]
         , style EditorContainer
@@ -159,7 +164,7 @@ stylesheet =
         , style HomeDropzone
             [ cursor "pointer"
             , variation Hovering
-                [ Color.background config.color.secondaryLightest
+                [ Color.background (fadeOut 0.9 config.color.secondary)
                 , Border.all 2.0
                 , Border.dashed
                 , Color.border config.color.primary
@@ -168,7 +173,7 @@ stylesheet =
         , style HomeDropzoneText
             [ Font.size config.font.size.medium
             , Font.typeface config.font.fonts
-            , Color.text config.color.secondaryLighter
+            , Color.text (lighten 0.1 config.color.secondary)
             ]
         , style PageHeader
             [ Color.text config.color.primary
@@ -178,12 +183,33 @@ stylesheet =
                 [ cursor "pointer" ]
             ]
         , style Slider
-            []
+            [ prop "-webkit-appearance" "none"
+            , pseudo ":-webkit-slider-thumb"
+                [ prop "-webkit-appearance" "none"
+                , prop "height" "38px"
+                , prop "width" "10px"
+                , prop "margin-top" "-16px"
+                , Border.all 1.0
+                , Border.rounded 2.0
+                , Color.background config.color.white
+                , Color.border config.color.secondary
+                , Shadow.glow config.color.secondary 1.0
+                ]
+            , pseudo ":-ms-track"
+                [ Color.background config.color.transparent
+                , Color.border config.color.transparent
+                , Color.text config.color.transparent
+                ]
+            , pseudo ":-webkit-slider-runnable-track"
+                [ prop "height" "4px"
+                , Color.background config.color.secondary
+                ]
+            ]
         , style Textfield
             [ Border.bottom 1
             , Color.border (Color.rgba 0 0 0 0.12)
+            , Color.text config.color.secondary
             , Font.typeface config.font.fonts
             , Font.size config.font.size.medium
-            , Color.text config.color.secondary
             ]
         ]
