@@ -66,7 +66,6 @@ type alias Position =
 
 type alias Settings =
     { containerSize : Int
-    , zoomStep : Float
     , outputSize : Int
     , outputMimetype : String
     , outputQuality : Float
@@ -76,7 +75,6 @@ type alias Settings =
 settings : Settings
 settings =
     { containerSize = 300
-    , zoomStep = 0.001
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
@@ -270,7 +268,7 @@ update msg model =
             let
                 newModel =
                     model
-                        |> setZoom (model.zoom + settings.zoomStep)
+                        |> setZoom (model.zoom + zoomStep model.imageDimensions)
             in
             ( newModel, Cmd.none )
 
@@ -278,7 +276,7 @@ update msg model =
             let
                 newModel =
                     model
-                        |> setZoom (model.zoom - settings.zoomStep)
+                        |> setZoom (model.zoom - zoomStep model.imageDimensions)
             in
             ( newModel, Cmd.none )
 
@@ -462,7 +460,7 @@ viewControls : Model -> Element Styles Styles.Variations Msg
 viewControls model =
     let
         minZoom =
-            settings.zoomStep
+            zoomStep model.imageDimensions
 
         maxZoom =
             (toFloat settings.containerSize / maxImageDimension model.imageDimensions) * 4
@@ -484,7 +482,7 @@ viewControls model =
                 (fromFloat model.zoom)
                 [ Slider.min minZoom
                 , Slider.max maxZoom
-                , Slider.step settings.zoomStep
+                , Slider.step (zoomStep model.imageDimensions)
                 , Slider.onChange ZoomChange
                 ]
             , Button.view [ Button.secondary, Button.onClick ZoomIn ] (text "+")
@@ -583,3 +581,15 @@ ratioImageToContainer imageDimensions =
 defaultZoom : ImageDimensions -> Float
 defaultZoom imageDimensions =
     ratioImageToContainer imageDimensions
+
+
+zoomStep : ImageDimensions -> Float
+zoomStep imageDimensions =
+    let
+        desiredStep =
+            0.01
+
+        imageResolutionModifier =
+            ratioImageToContainer imageDimensions
+    in
+    desiredStep * imageResolutionModifier

@@ -147,7 +147,8 @@ viewContent =
         , onDrop UploadFile
         ]
         [ Element.el Styles.PageHeader [] (Element.text "Emojify")
-        , Element.el Styles.HomeDropzoneText [] (Element.text "Drop an image to begin")
+        , Element.el Styles.HomeDropzoneText [] <|
+            Element.text "Click and select an image or drop one to begin"
         ]
 
 
