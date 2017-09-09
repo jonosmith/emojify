@@ -34,6 +34,11 @@ type Msg
     | ImageDimensionsResponse ImageDimensions
 
 
+type CanvasDrawMode
+    = Performance
+    | Quality
+
+
 
 -- MODEL
 
@@ -302,7 +307,7 @@ update msg model =
                     case model.canvasWithImage of
                         Just canvas ->
                             Canvas.toDataUrl settings.outputMimetype settings.outputQuality <|
-                                drawDownloadCanvas canvas model
+                                drawDownloadCanvas model canvas
 
                         _ ->
                             ""
@@ -447,10 +452,10 @@ viewImagePlaceholder =
 
 
 viewImageCanvas : Canvas -> Model -> Element Styles Styles.Variations Msg
-viewImageCanvas canvas model =
+viewImageCanvas canvasWithImage model =
     let
         newCanvas =
-            drawPreviewCanvas settings.containerSize canvas model
+            drawPreviewCanvas model canvasWithImage
     in
     Element.html <|
         Canvas.toHtml [] newCanvas
@@ -463,7 +468,7 @@ viewControls model =
             zoomStep model.imageDimensions
 
         maxZoom =
-            (toFloat settings.containerSize / maxImageDimension model.imageDimensions) * 4
+            1.0
 
         isCanvasLoaded =
             case model.canvasWithImage of
@@ -502,66 +507,164 @@ viewControls model =
         ]
 
 
-drawPreviewCanvas : Int -> Canvas -> Model -> Canvas
-drawPreviewCanvas outputSize canvas model =
+drawPreviewCanvas : Model -> Canvas -> Canvas
+drawPreviewCanvas model canvasWithImage =
     let
+        mode =
+            case model.drag of
+                Just _ ->
+                    Performance
+
+                Nothing ->
+                    Quality
+    in
+    drawCanvas
+        { mode = mode
+        , drag = model.drag
+        , position = model.position
+        , imageDimensions = model.imageDimensions
+        , scaleFactor = model.zoom
+        , outputSize = settings.containerSize
+        , canvasWithImage = canvasWithImage
+        }
+
+
+drawDownloadCanvas : Model -> Canvas -> Canvas
+drawDownloadCanvas model canvasWithImage =
+    let
+        scaleFactor =
+            model.zoom * (toFloat settings.outputSize / toFloat settings.containerSize)
+    in
+    drawCanvas
+        { mode = Quality
+        , drag = Nothing
+        , position = model.position
+        , imageDimensions = model.imageDimensions
+        , scaleFactor = scaleFactor
+        , outputSize = settings.outputSize
+        , canvasWithImage = canvasWithImage
+        }
+
+
+drawCanvas :
+    { a
+        | canvasWithImage : Canvas
+        , drag : Maybe Drag
+        , imageDimensions : { height : Int, width : Int }
+        , mode : CanvasDrawMode
+        , outputSize : Int
+        , position : Position
+        , scaleFactor : Float
+    }
+    -> Canvas
+drawCanvas { canvasWithImage, drag, imageDimensions, mode, outputSize, position, scaleFactor } =
+    let
+        offsetImageOp =
+            canvasImageOffsetOp drag position
+
         drawOp =
-            Canvas.batch (mainDrawOperations canvas model)
+            case mode of
+                Performance ->
+                    let
+                        scaleCanvasOp =
+                            Scale scaleFactor scaleFactor
+                    in
+                    Canvas.batch [ offsetImageOp, scaleCanvasOp, canvasDrawImageOp canvasWithImage ]
+
+                Quality ->
+                    let
+                        fullCanvasWithImage =
+                            Canvas.draw
+                                (Canvas.batch [ canvasDrawImageOp canvasWithImage ])
+                                (Canvas.initialize (Size imageDimensions.width imageDimensions.height))
+
+                        scaledImageCanvas =
+                            progressivelyScaleImageCanvas scaleFactor 1.0 imageDimensions fullCanvasWithImage
+                    in
+                    Canvas.batch [ offsetImageOp, canvasDrawImageOp scaledImageCanvas ]
     in
-    Canvas.draw drawOp (Canvas.initialize (Size outputSize outputSize))
+    Canvas.draw
+        drawOp
+        (Canvas.initialize (Size outputSize outputSize))
 
 
-drawDownloadCanvas : Canvas -> Model -> Canvas
-drawDownloadCanvas canvas model =
+canvasDrawImageOp : Canvas -> DrawOp
+canvasDrawImageOp canvas =
+    Canvas.At
+        (Point 0 0)
+        |> DrawImage
+            canvas
+
+
+canvasImageOffsetOp : Maybe Drag -> Position -> DrawOp
+canvasImageOffsetOp maybeDrag position =
     let
-        scaleDownFactor =
-            toFloat settings.outputSize / toFloat settings.containerSize
+        ( dragOffsetX, dragOffsetY ) =
+            case maybeDrag of
+                Just drag ->
+                    ( drag.current.x - drag.start.x
+                    , drag.current.y - drag.start.y
+                    )
 
-        scaleDownOp =
-            Scale scaleDownFactor scaleDownFactor
+                Nothing ->
+                    ( 0, 0 )
 
-        mainDrawOps =
-            mainDrawOperations canvas model
+        x =
+            toFloat (position.x + dragOffsetX)
 
-        drawOp =
-            Canvas.batch (scaleDownOp :: mainDrawOps)
+        y =
+            toFloat (position.y + dragOffsetY)
     in
-    Canvas.draw drawOp (Canvas.initialize (Size settings.outputSize settings.outputSize))
+    Translate (Point x y)
 
 
-mainDrawOperations : Canvas -> Model -> List DrawOp
-mainDrawOperations canvas model =
+progressivelyScaleImageCanvas : Float -> Float -> ImageDimensions -> Canvas -> Canvas
+progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanvas =
     let
-        offsetImage =
-            let
-                ( dragOffsetX, dragOffsetY ) =
-                    case model.drag of
-                        Just drag ->
-                            ( drag.current.x - drag.start.x
-                            , drag.current.y - drag.start.y
-                            )
+        isScaleDown =
+            targetScale < currentScale
 
-                        Nothing ->
-                            ( 0, 0 )
+        standardScaleStep =
+            case isScaleDown of
+                True ->
+                    0.5
 
-                x =
-                    toFloat (model.position.x + dragOffsetX)
+                False ->
+                    2
 
-                y =
-                    toFloat (model.position.y + dragOffsetY)
-            in
-            Translate (Point x y)
+        isFinal =
+            case isScaleDown of
+                True ->
+                    standardScaleStep * currentScale < targetScale
 
-        scaleImage =
-            Scale model.zoom model.zoom
+                False ->
+                    standardScaleStep * currentScale > targetScale
 
-        drawImage =
-            Canvas.At
-                (Point 0 0)
-                |> DrawImage
-                    canvas
+        newScale =
+            if isFinal == True then
+                targetScale / currentScale
+            else
+                standardScaleStep
+
+        newCurrentScale =
+            newScale * currentScale
+
+        scaledImageCanvas =
+            Canvas.draw
+                (Canvas.batch
+                    [ Scale newScale newScale
+                    , Canvas.At
+                        (Point 0 0)
+                        |> DrawImage
+                            imageCanvas
+                    ]
+                )
+                (Canvas.initialize (Size imageDimensions.width imageDimensions.height))
     in
-    [ offsetImage, scaleImage, drawImage ]
+    if isFinal == True then
+        scaledImageCanvas
+    else
+        progressivelyScaleImageCanvas targetScale newCurrentScale imageDimensions scaledImageCanvas
 
 
 

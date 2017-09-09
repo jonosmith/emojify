@@ -148,7 +148,7 @@ viewContent =
         ]
         [ Element.el Styles.PageHeader [] (Element.text "Emojify")
         , Element.el Styles.HomeDropzoneText [] <|
-            Element.text "Click and select an image or drop one to begin"
+            Element.text "Click to select an image or drop one to begin"
         ]
 
 

@@ -30,7 +30,7 @@ module Styles
 
 import Color exposing (Color, rgb, rgba)
 import Color.Manipulate exposing (darken, fadeOut, lighten)
-import Style exposing (StyleSheet, cursor, focus, hover, importCss, prop, pseudo, style, variation)
+import Style exposing (StyleSheet, cursor, focus, hover, prop, pseudo, style, variation)
 import Style.Border as Border
 import Style.Color as Color
 import Style.Font as Font
