@@ -71,6 +71,7 @@ type alias Position =
 
 type alias Settings =
     { containerSize : Int
+    , maxZoom : Float
     , outputSize : Int
     , outputMimetype : String
     , outputQuality : Float
@@ -80,6 +81,7 @@ type alias Settings =
 settings : Settings
 settings =
     { containerSize = 300
+    , maxZoom = 2.0
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
@@ -468,7 +470,7 @@ viewControls model =
             zoomStep model.imageDimensions
 
         maxZoom =
-            1.0
+            settings.maxZoom
 
         isCanvasLoaded =
             case model.canvasWithImage of
@@ -532,13 +534,24 @@ drawPreviewCanvas model canvasWithImage =
 drawDownloadCanvas : Model -> Canvas -> Canvas
 drawDownloadCanvas model canvasWithImage =
     let
+        ratioZoomToContainerSize =
+            model.zoom / toFloat settings.containerSize
+
         scaleFactor =
-            model.zoom * (toFloat settings.outputSize / toFloat settings.containerSize)
+            toFloat settings.outputSize * ratioZoomToContainerSize
+
+        ratioOutputToContainer =
+            toFloat settings.outputSize / toFloat settings.containerSize
+
+        position =
+            { x = round (toFloat model.position.x * ratioOutputToContainer)
+            , y = round (toFloat model.position.y * ratioOutputToContainer)
+            }
     in
     drawCanvas
         { mode = Quality
         , drag = Nothing
-        , position = model.position
+        , position = position
         , imageDimensions = model.imageDimensions
         , scaleFactor = scaleFactor
         , outputSize = settings.outputSize
@@ -650,6 +663,13 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
             newScale * currentScale
 
         scaledImageCanvas =
+            let
+                imageWidth =
+                    round (toFloat imageDimensions.width * settings.maxZoom)
+
+                imageHeight =
+                    round (toFloat imageDimensions.height * settings.maxZoom)
+            in
             Canvas.draw
                 (Canvas.batch
                     [ Scale newScale newScale
@@ -659,7 +679,7 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
                             imageCanvas
                     ]
                 )
-                (Canvas.initialize (Size imageDimensions.width imageDimensions.height))
+                (Canvas.initialize (Size imageWidth imageHeight))
     in
     if isFinal == True then
         scaledImageCanvas
