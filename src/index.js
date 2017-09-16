@@ -1,3 +1,4 @@
+import './Assets/icomoon/style.css'
 import './main.css'
 import { Main } from './Main.elm'
 

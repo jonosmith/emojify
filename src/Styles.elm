@@ -130,9 +130,9 @@ stylesheet =
                 [ Color.background config.color.primary
                 , Color.text config.color.white
                 , hover
-                    [ Color.background (darken 0.1 config.color.primary) ]
+                    [ Color.background (darken 0.05 config.color.primary) ]
                 , focus
-                    [ Color.background (darken 0.2 config.color.primary)
+                    [ Color.background (darken 0.1 config.color.primary)
                     ]
                 ]
             , variation Secondary

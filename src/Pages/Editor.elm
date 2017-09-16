@@ -5,7 +5,7 @@ module Pages.Editor exposing (Model, Msg, init, subscriptions, update, view)
 
 import Canvas exposing (Canvas, DrawOp(DrawImage, Scale, Translate), Error, Point, Size)
 import Element exposing (Element, column, el, empty, row, text)
-import Element.Attributes exposing (center, clip, fill, height, inlineStyle, px, spacing, vary, verticalCenter, width)
+import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, justify, px, spacing, vary, verticalCenter, width)
 import Element.Events
 import Maybe exposing (Maybe(Just, Nothing))
 import Mouse
@@ -18,20 +18,25 @@ import Task
 import Views.Elements.Alert as Alert
 import Views.Elements.Button as Button
 import Views.Elements.Events as Events exposing (onMouseDown, onMouseMove)
+import Views.Elements.Icon as Icon
 import Views.Elements.Slider as Slider
 
 
 type Msg
-    = MousePositionChange Events.Position
+    = DownloadImage
     | DragStart Events.Position
     | DragEnd Mouse.Position
+    | ImageDimensionsResponse ImageDimensions
+    | ImageLoaded (Result Error Canvas)
+    | MousePositionChange Events.Position
+    | MoveDown
+    | MoveLeft
+    | MoveRight
+    | MoveUp
+    | NavigateHome
     | ZoomIn
     | ZoomOut
     | ZoomChange String
-    | DownloadImage
-    | ImageLoaded (Result Error Canvas)
-    | NavigateHome
-    | ImageDimensionsResponse ImageDimensions
 
 
 type CanvasDrawMode
@@ -263,29 +268,14 @@ update msg model =
 
                         Nothing ->
                             model.position
-
-                newModel =
-                    model
-                        |> setPosition newPosition
-                        |> setDrag Nothing
             in
-            ( newModel, Cmd.none )
+            ( { model | position = newPosition, drag = Nothing }, Cmd.none )
 
         ZoomIn ->
-            let
-                newModel =
-                    model
-                        |> setZoom (model.zoom + zoomStep model.imageDimensions)
-            in
-            ( newModel, Cmd.none )
+            ( { model | zoom = model.zoom + zoomStep model.imageDimensions }, Cmd.none )
 
         ZoomOut ->
-            let
-                newModel =
-                    model
-                        |> setZoom (model.zoom - zoomStep model.imageDimensions)
-            in
-            ( newModel, Cmd.none )
+            ( { model | zoom = model.zoom - zoomStep model.imageDimensions }, Cmd.none )
 
         ZoomChange newZoom ->
             let
@@ -302,6 +292,18 @@ update msg model =
                             model
             in
             ( newModel, Cmd.none )
+
+        MoveDown ->
+            ( updatePositionByY 1 model, Cmd.none )
+
+        MoveLeft ->
+            ( updatePositionByX -1 model, Cmd.none )
+
+        MoveRight ->
+            ( updatePositionByX 1 model, Cmd.none )
+
+        MoveUp ->
+            ( updatePositionByY -1 model, Cmd.none )
 
         DownloadImage ->
             let
@@ -347,6 +349,30 @@ update msg model =
             ( newModel, Cmd.none )
 
 
+updatePositionByX : Int -> Model -> Model
+updatePositionByX x model =
+    let
+        currentPosition =
+            model.position
+
+        newPosition =
+            { currentPosition | x = currentPosition.x + x }
+    in
+    { model | position = newPosition }
+
+
+updatePositionByY : Int -> Model -> Model
+updatePositionByY y model =
+    let
+        currentPosition =
+            model.position
+
+        newPosition =
+            { currentPosition | y = currentPosition.y + y }
+    in
+    { model | position = newPosition }
+
+
 loadImage : String -> Cmd Msg
 loadImage url =
     Task.attempt
@@ -373,7 +399,7 @@ subscriptions _ =
 view : Model -> Element Styles Styles.Variations Msg
 view model =
     let
-        rows =
+        content =
             case model.hasImageLoadFailed of
                 True ->
                     viewImageLoadFailMessage
@@ -382,38 +408,53 @@ view model =
                     viewMainEditor model
     in
     column Styles.None
-        [ center
-        , verticalCenter
-        , spacing 20
-        ]
-        rows
-
-
-viewImageLoadFailMessage : List (Element Styles Variations Msg)
-viewImageLoadFailMessage =
-    [ Alert.view [ Alert.danger ] (text "Failed to load image! Try again with a different one")
-    , Button.view [ Button.primary, Button.onClick NavigateHome ] (text "Home")
-    ]
-
-
-viewMainEditor : Model -> List (Element Styles Variations Msg)
-viewMainEditor model =
-    [ viewPageTitle
-    , el Styles.EditorContainer
-        [ width (px (toFloat settings.containerSize))
-        , height (px (toFloat settings.containerSize))
-        , clip
-        , onMouseMove MousePositionChange
-        , onMouseDown DragStart
-        ]
-        (row Styles.None
-            []
-            [ viewImageOverlay
-            , viewImage model
+        [ center, verticalCenter, spacing 20 ]
+        [ row Styles.None
+            [ alignLeft ]
+            [ viewHomeButton
             ]
-        )
-    , viewControls model
-    ]
+        , row Styles.None
+            []
+            [ content
+            ]
+        ]
+
+
+viewImageLoadFailMessage : Element Styles Variations Msg
+viewImageLoadFailMessage =
+    column Styles.None
+        [ center, verticalCenter, spacing 20 ]
+        [ Alert.view [ Alert.danger ] (text "Failed to load image! Try again with a different one")
+        , Button.view [ Button.primary, Button.onClick NavigateHome ] (text "Home")
+        ]
+
+
+viewMainEditor : Model -> Element Styles Variations Msg
+viewMainEditor model =
+    row Styles.None
+        [ spacing 10 ]
+        [ column Styles.None
+            [ center, verticalCenter, spacing 20 ]
+            [ el Styles.EditorContainer
+                [ width (px (toFloat settings.containerSize))
+                , height (px (toFloat settings.containerSize))
+                , clip
+                , onMouseMove MousePositionChange
+                , onMouseDown DragStart
+                ]
+                (row Styles.None
+                    []
+                    [ viewImageOverlay
+                    , viewImage model
+                    ]
+                )
+            , viewControls model
+            ]
+        , column Styles.None
+            [ spacing 30 ]
+            [ viewMoveControls
+            ]
+        ]
 
 
 viewPageTitle : Element Styles Variations Msg
@@ -482,18 +523,7 @@ viewControls model =
     in
     column Styles.None
         [ spacing 20, width (fill 1.0) ]
-        [ row Styles.None
-            [ spacing 20 ]
-            [ Button.view [ Button.secondary, Button.onClick ZoomOut ] (text "-")
-            , Slider.view
-                (fromFloat model.zoom)
-                [ Slider.min minZoom
-                , Slider.max maxZoom
-                , Slider.step (zoomStep model.imageDimensions)
-                , Slider.onChange ZoomChange
-                ]
-            , Button.view [ Button.secondary, Button.onClick ZoomIn ] (text "+")
-            ]
+        [ viewZoomControls model.zoom model.imageDimensions
         , row Styles.None
             []
             [ Button.view
@@ -506,6 +536,80 @@ viewControls model =
                 ]
                 (text "Download")
             ]
+        ]
+
+
+viewHomeButton : Element Styles Variations Msg
+viewHomeButton =
+    Button.view [ Button.primary, Button.onClick NavigateHome ] <|
+        row
+            Styles.None
+            [ spacing 10 ]
+            [ Icon.view "home3"
+            , text "Home"
+            ]
+
+
+viewMoveControls : Element Styles Variations Msg
+viewMoveControls =
+    column Styles.None
+        [ spacing 5 ]
+        [ row Styles.None
+            [ center ]
+            [ Button.view
+                [ Button.secondary
+                , Button.icon
+                , Button.onClick MoveUp
+                ]
+                (Icon.view "arrow-up")
+            ]
+        , row Styles.None
+            [ center, spacing 25 ]
+            [ Button.view
+                [ Button.secondary
+                , Button.icon
+                , Button.onClick MoveLeft
+                ]
+                (Icon.view "arrow-left")
+            , Button.view
+                [ Button.secondary
+                , Button.icon
+                , Button.onClick MoveRight
+                ]
+                (Icon.view "arrow-right")
+            ]
+        , row Styles.None
+            [ center ]
+            [ Button.view
+                [ Button.secondary
+                , Button.icon
+                , Button.onClick MoveDown
+                ]
+                (Icon.view "arrow-down")
+            ]
+        ]
+
+
+viewZoomControls : Zoom -> ImageDimensions -> Element Styles Variations Msg
+viewZoomControls zoom imageDimensions =
+    let
+        minZoom =
+            zoomStep imageDimensions
+
+        maxZoom =
+            settings.maxZoom
+    in
+    row Styles.None
+        [ spacing 20 ]
+        [ Button.view [ Button.secondary, Button.small, Button.onClick ZoomOut ] (text "-")
+        , Slider.view
+            (fromFloat zoom)
+            [ Slider.min minZoom
+            , Slider.max maxZoom
+            , Slider.step (zoomStep imageDimensions)
+            , Slider.onChange ZoomChange
+            ]
+        , Button.view [ Button.secondary, Button.small, Button.onClick ZoomIn ] (text "+")
         ]
 
 

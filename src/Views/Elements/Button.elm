@@ -3,9 +3,11 @@ module Views.Elements.Button
         ( attrs
         , disabled
         , fill
+        , icon
         , onClick
         , primary
         , secondary
+        , small
         , view
         , wide
         )
@@ -14,7 +16,7 @@ module Views.Elements.Button
 -}
 
 import Element exposing (Attribute, Element, button, el)
-import Element.Attributes as Attributes exposing (paddingLeft, paddingRight, paddingXY, vary, width)
+import Element.Attributes as Attributes exposing (padding, paddingLeft, paddingRight, paddingXY, vary, width)
 import Element.Events as Events
 import Styles exposing (Styles, Variations)
 import Views.Utils exposing (combineAttributes)
@@ -49,11 +51,19 @@ secondary =
     [ vary Styles.Secondary True ]
 
 
+icon : List (Attribute Variations msg)
+icon =
+    [ padding 4 ]
+
+
 wide : List (Attribute Variations msg)
 wide =
-    [ paddingLeft 40
-    , paddingRight 40
-    ]
+    [ paddingLeft 40, paddingRight 40 ]
+
+
+small : List (Attribute Variations msg)
+small =
+    [ paddingLeft 20, paddingRight 20 ]
 
 
 fill : List (Attribute Variations msg)
