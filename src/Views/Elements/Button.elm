@@ -10,15 +10,17 @@ module Views.Elements.Button
         , small
         , view
         , wide
+        , withIcon
         )
 
 {-| Simple reusable button element
 -}
 
-import Element exposing (Attribute, Element, button, el)
-import Element.Attributes as Attributes exposing (padding, paddingLeft, paddingRight, paddingXY, vary, width)
+import Element exposing (Attribute, Element, button, el, row, text)
+import Element.Attributes as Attributes exposing (center, padding, paddingLeft, paddingRight, paddingXY, spacing, vary, width)
 import Element.Events as Events
 import Styles exposing (Styles, Variations)
+import Views.Elements.Icon as Icon
 import Views.Utils exposing (combineAttributes)
 
 
@@ -30,6 +32,17 @@ view attributes child =
                 [ paddingXY 20 10 ]
             )
             child
+
+
+withIcon : List (List (Attribute variation msg)) -> String -> String -> Element Styles variation msg
+withIcon attributes iconName buttonText =
+    view attributes <|
+        row
+            Styles.None
+            [ center, spacing 10 ]
+            [ Icon.view iconName
+            , text buttonText
+            ]
 
 
 

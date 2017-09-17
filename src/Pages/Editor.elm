@@ -526,7 +526,7 @@ viewControls model =
         [ viewZoomControls model.zoom model.imageDimensions
         , row Styles.None
             []
-            [ Button.view
+            [ Button.withIcon
                 [ if isCanvasLoaded then
                     Button.primary
                   else
@@ -534,20 +534,15 @@ viewControls model =
                 , Button.fill
                 , Button.onClick DownloadImage
                 ]
-                (text "Download")
+                "floppy-disk"
+                "Download"
             ]
         ]
 
 
 viewHomeButton : Element Styles Variations Msg
 viewHomeButton =
-    Button.view [ Button.primary, Button.onClick NavigateHome ] <|
-        row
-            Styles.None
-            [ spacing 10 ]
-            [ Icon.view "home3"
-            , text "Home"
-            ]
+    Button.withIcon [ Button.primary, Button.onClick NavigateHome ] "home3" "Home"
 
 
 viewMoveControls : Element Styles Variations Msg
@@ -648,8 +643,8 @@ drawDownloadCanvas model canvasWithImage =
             toFloat settings.outputSize / toFloat settings.containerSize
 
         position =
-            { x = round (toFloat model.position.x * ratioOutputToContainer)
-            , y = round (toFloat model.position.y * ratioOutputToContainer)
+            { x = ceiling (toFloat model.position.x * ratioOutputToContainer)
+            , y = ceiling (toFloat model.position.y * ratioOutputToContainer)
             }
     in
     drawCanvas
