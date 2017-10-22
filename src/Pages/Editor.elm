@@ -15,6 +15,7 @@ import Route
 import String.Extra exposing (fromFloat)
 import Styles exposing (Styles, Variations)
 import Task
+import Util exposing (appendIf)
 import Views.Elements.Alert as Alert
 import Views.Elements.Button as Button
 import Views.Elements.Events as Events exposing (onMouseDown, onMouseMove)
@@ -431,17 +432,27 @@ viewImageLoadFailMessage =
 
 viewMainEditor : Model -> Element Styles Variations Msg
 viewMainEditor model =
+    let
+        isDragging =
+            case model.drag of
+                Nothing ->
+                    False
+
+                _ ->
+                    True
+    in
     row Styles.None
         [ spacing 10 ]
         [ column Styles.None
             [ center, verticalCenter, spacing 20 ]
             [ el Styles.EditorContainer
-                [ width (px (toFloat settings.containerSize))
-                , height (px (toFloat settings.containerSize))
-                , clip
-                , onMouseMove MousePositionChange
-                , onMouseDown DragStart
-                ]
+                ([ width (px (toFloat settings.containerSize))
+                 , height (px (toFloat settings.containerSize))
+                 , clip
+                 , onMouseDown DragStart
+                 ]
+                    |> appendIf isDragging [ onMouseMove MousePositionChange ]
+                )
                 (row Styles.None
                     []
                     [ viewImageOverlay
