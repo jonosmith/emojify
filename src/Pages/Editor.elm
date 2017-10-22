@@ -5,8 +5,7 @@ module Pages.Editor exposing (Model, Msg, init, subscriptions, update, view)
 
 import Canvas exposing (Canvas, DrawOp(DrawImage, Scale, Translate), Error, Point, Size)
 import Element exposing (Element, column, el, empty, row, text)
-import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, justify, px, spacing, vary, verticalCenter, width)
-import Element.Events
+import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, px, spacing, verticalCenter, width)
 import Maybe exposing (Maybe(Just, Nothing))
 import Mouse
 import Navigation
@@ -203,11 +202,6 @@ setHasImageLoadFailed hasImageLoadFailed model =
 setImageDimensions : ImageDimensions -> Model -> Model
 setImageDimensions imageDimensions model =
     { model | imageDimensions = imageDimensions }
-
-
-setPosition : Position -> Model -> Model
-setPosition position model =
-    { model | position = position }
 
 
 setZoom : Zoom -> Model -> Model
@@ -468,15 +462,6 @@ viewMainEditor model =
         ]
 
 
-viewPageTitle : Element Styles Variations Msg
-viewPageTitle =
-    el Styles.PageHeader
-        [ Element.Events.onClick NavigateHome
-        , vary Styles.PageHeaderLink True
-        ]
-        (Element.text "Emojify")
-
-
 viewImageOverlay : Element Styles Styles.Variations Msg
 viewImageOverlay =
     el Styles.EditorOverlay
@@ -518,12 +503,6 @@ viewImageCanvas canvasWithImage model =
 viewControls : Model -> Element Styles Styles.Variations Msg
 viewControls model =
     let
-        minZoom =
-            zoomStep model.imageDimensions
-
-        maxZoom =
-            settings.maxZoom
-
         isCanvasLoaded =
             case model.canvasWithImage of
                 Just _ ->
