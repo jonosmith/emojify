@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-{-| Main app entry point - wires up the models, updates and views in the sub modules
+{-| Main app entry point - wires up the models, updates and views in the sub modules (pages)
 -}
 
 import Element exposing (Element)
@@ -10,25 +10,26 @@ import Pages.Editor as Editor
 import Pages.Home as Home
 import Route
 import Styles exposing (Styles, Variations, stylesheet)
+import Util exposing (toTupleWith)
 
 
 -- MODEL
 
 
 type alias Model =
-    { data : DataModel
-    , page : PageState
+    { app : AppModel
+    , page : PageModel
     }
 
 
-type PageState
+type PageModel
     = Home Home.Model
     | Editor Editor.Model
 
 
-type alias DataModel =
+type alias AppModel =
     { location : Maybe Location
-    , url : String
+    , imageUrl : String
     }
 
 
@@ -36,47 +37,13 @@ type alias DataModel =
 -- Setters
 
 
-setLocation : Maybe Location -> DataModel -> DataModel
-setLocation location dataModel =
-    { dataModel | location = location }
-
-
-setUrl : String -> DataModel -> DataModel
-setUrl url dataModel =
-    { dataModel | url = url }
-
-
-setDataLocation : Location -> Model -> Model
-setDataLocation newLocation model =
+setAppLocation : Location -> Model -> Model
+setAppLocation location model =
     let
-        dataModel =
-            model.data
+        appModel =
+            model.app
     in
-    dataModel
-        |> setLocation (Just newLocation)
-        |> asDataIn model
-
-
-setDataUrl : String -> Model -> Model
-setDataUrl newUrl model =
-    model.data
-        |> setUrl newUrl
-        |> asDataIn model
-
-
-setData : DataModel -> Model -> Model
-setData dataModel model =
-    { model | data = dataModel }
-
-
-asDataIn : Model -> DataModel -> Model
-asDataIn =
-    flip setData
-
-
-setPage : PageState -> Model -> Model
-setPage page model =
-    { model | page = page }
+    { model | app = { appModel | location = Just location } }
 
 
 
@@ -87,9 +54,9 @@ init : Location -> ( Model, Cmd Msg )
 init location =
     let
         model =
-            { data =
+            { app =
                 { location = Just location
-                , url = ""
+                , imageUrl = ""
                 }
             , page = Home Home.init
             }
@@ -116,50 +83,47 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetRoute location ->
-            let
-                newModel =
-                    model
-                        |> setDataLocation location
-            in
-            goToNewPage location newModel
+            goToNewLocation location model
 
-        PageHomeMsg sceneMsg ->
+        PageHomeMsg pageMsg ->
             case model.page of
                 Home homeModel ->
                     let
-                        ( ( newPageModel, newSceneCmd ), newSceneMsg ) =
-                            Home.update sceneMsg homeModel
+                        ( ( newPageModel, newPageCmd ), msgFromPage ) =
+                            Home.update pageMsg homeModel
 
                         ( newModel, newCmd ) =
-                            model
-                                |> setPage (Home newPageModel)
-                                |> updateHomeSceneExternalMsg newSceneMsg
+                            case msgFromPage of
+                                Home.ImageUploaded imageUrl ->
+                                    let
+                                        appModel =
+                                            model.app
+                                    in
+                                    { model | app = { appModel | imageUrl = imageUrl } }
+                                        |> toTupleWith (goToNewRoute Route.Editor)
+
+                                Home.NoOp ->
+                                    ( model, Cmd.none )
 
                         newCommand =
                             Cmd.batch
-                                [ Cmd.map PageHomeMsg newSceneCmd
+                                [ Cmd.map PageHomeMsg newPageCmd
                                 , newCmd
                                 ]
                     in
-                    ( newModel, newCommand )
+                    ( { newModel | page = Home newPageModel }, newCommand )
 
                 _ ->
                     ( model, Cmd.none )
 
-
-
-        PageEditorMsg sceneMsg ->
+        PageEditorMsg pageMsg ->
             case model.page of
                 Editor editorModel ->
                     let
-                        ( newEditorModel, newSceneMsg ) =
-                            Editor.update sceneMsg editorModel
-
-                        newModel =
-                            model
-                                |> setPage (Editor newEditorModel)
+                        ( newEditorModel, newPageMsg ) =
+                            Editor.update pageMsg editorModel
                     in
-                    ( newModel, newSceneMsg )
+                    ( { model | page = Editor newEditorModel }, newPageMsg )
 
                 _ ->
                     ( model, Cmd.none )
@@ -171,51 +135,35 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateHomeSceneExternalMsg : Home.ExternalMsg -> Model -> ( Model, Cmd Msg )
-updateHomeSceneExternalMsg msg model =
-    case msg of
-        Home.ImageUploaded imageUrl ->
-            let
-                newModel =
-                    model
-                        |> setDataUrl imageUrl
-
-                newCmd =
-                    Navigation.newUrl (Route.routeToString Route.Editor)
-            in
-            ( newModel, newCmd )
-
-        Home.NoOp ->
-            ( model, Cmd.none )
+goToNewRoute : Route.Route -> Cmd msg
+goToNewRoute route =
+    Navigation.newUrl (Route.routeToString route)
 
 
-goToNewPage : Location -> Model -> ( Model, Cmd Msg )
-goToNewPage location model =
+goToNewLocation : Location -> Model -> ( Model, Cmd Msg )
+goToNewLocation location model =
+    let
+        newModel =
+            setAppLocation location model
+    in
+    goToLocationPage location newModel
+
+
+goToLocationPage : Location -> Model -> ( Model, Cmd Msg )
+goToLocationPage location model =
     case Route.parseLocation location of
         Route.Editor ->
             let
                 ( editorInitModel, editorInitCmd ) =
-                    Editor.init (Just model.data.url)
-
-                newModel =
-                    model
-                        |> setPage (Editor editorInitModel)
+                    Editor.init (Just model.app.imageUrl)
 
                 newCmd =
                     Cmd.map PageEditorMsg editorInitCmd
             in
-            ( newModel, newCmd )
+            ( { model | page = Editor editorInitModel }, newCmd )
 
         _ ->
-            let
-                homeInitModel =
-                    Home.init
-
-                newModel =
-                    model
-                        |> setPage (Home homeInitModel)
-            in
-            ( newModel, Cmd.none )
+            ( { model | page = Home Home.init }, Cmd.none )
 
 
 
@@ -225,7 +173,7 @@ goToNewPage location model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
-        sceneSubscriptions =
+        pageSubscriptions =
             case model.page of
                 Home _ ->
                     Sub.none
@@ -234,7 +182,7 @@ subscriptions model =
                     Sub.map PageEditorMsg (Editor.subscriptions editorModel)
     in
     Sub.batch
-        [ sceneSubscriptions
+        [ pageSubscriptions
         ]
 
 

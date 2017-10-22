@@ -5,8 +5,7 @@ module Pages.Editor exposing (Model, Msg, init, subscriptions, update, view)
 
 import Canvas exposing (Canvas, DrawOp(DrawImage, Scale, Translate), Error, Point, Size)
 import Element exposing (Element, column, el, empty, row, text)
-import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, justify, px, spacing, vary, verticalCenter, width)
-import Element.Events
+import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, px, spacing, verticalCenter, width)
 import Maybe exposing (Maybe(Just, Nothing))
 import Mouse
 import Navigation
@@ -15,6 +14,7 @@ import Route
 import String.Extra exposing (fromFloat)
 import Styles exposing (Styles, Variations)
 import Task
+import Util exposing (appendIf)
 import Views.Elements.Alert as Alert
 import Views.Elements.Button as Button
 import Views.Elements.Events as Events exposing (onMouseDown, onMouseMove)
@@ -76,7 +76,7 @@ type alias Position =
 
 type alias Settings =
     { containerSize : Int
-    , maxZoom : Float
+    , maxZoomMultiplier : Float
     , outputSize : Int
     , outputMimetype : String
     , outputQuality : Float
@@ -86,7 +86,7 @@ type alias Settings =
 settings : Settings
 settings =
     { containerSize = 300
-    , maxZoom = 2.0
+    , maxZoomMultiplier = 2.0
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
@@ -202,11 +202,6 @@ setHasImageLoadFailed hasImageLoadFailed model =
 setImageDimensions : ImageDimensions -> Model -> Model
 setImageDimensions imageDimensions model =
     { model | imageDimensions = imageDimensions }
-
-
-setPosition : Position -> Model -> Model
-setPosition position model =
-    { model | position = position }
 
 
 setZoom : Zoom -> Model -> Model
@@ -431,17 +426,27 @@ viewImageLoadFailMessage =
 
 viewMainEditor : Model -> Element Styles Variations Msg
 viewMainEditor model =
+    let
+        isDragging =
+            case model.drag of
+                Nothing ->
+                    False
+
+                _ ->
+                    True
+    in
     row Styles.None
         [ spacing 10 ]
         [ column Styles.None
             [ center, verticalCenter, spacing 20 ]
             [ el Styles.EditorContainer
-                [ width (px (toFloat settings.containerSize))
-                , height (px (toFloat settings.containerSize))
-                , clip
-                , onMouseMove MousePositionChange
-                , onMouseDown DragStart
-                ]
+                ([ width (px (toFloat settings.containerSize))
+                 , height (px (toFloat settings.containerSize))
+                 , clip
+                 , onMouseDown DragStart
+                 ]
+                    |> appendIf isDragging [ onMouseMove MousePositionChange ]
+                )
                 (row Styles.None
                     []
                     [ viewImageOverlay
@@ -455,15 +460,6 @@ viewMainEditor model =
             [ viewMoveControls
             ]
         ]
-
-
-viewPageTitle : Element Styles Variations Msg
-viewPageTitle =
-    el Styles.PageHeader
-        [ Element.Events.onClick NavigateHome
-        , vary Styles.PageHeaderLink True
-        ]
-        (Element.text "Emojify")
 
 
 viewImageOverlay : Element Styles Styles.Variations Msg
@@ -507,12 +503,6 @@ viewImageCanvas canvasWithImage model =
 viewControls : Model -> Element Styles Styles.Variations Msg
 viewControls model =
     let
-        minZoom =
-            zoomStep model.imageDimensions
-
-        maxZoom =
-            settings.maxZoom
-
         isCanvasLoaded =
             case model.canvasWithImage of
                 Just _ ->
@@ -587,20 +577,13 @@ viewMoveControls =
 
 viewZoomControls : Zoom -> ImageDimensions -> Element Styles Variations Msg
 viewZoomControls zoom imageDimensions =
-    let
-        minZoom =
-            zoomStep imageDimensions
-
-        maxZoom =
-            settings.maxZoom
-    in
     row Styles.None
         [ spacing 20 ]
         [ Button.view [ Button.secondary, Button.small, Button.onClick ZoomOut ] (text "-")
         , Slider.view
             (fromFloat zoom)
-            [ Slider.min minZoom
-            , Slider.max maxZoom
+            [ Slider.min (zoomStep imageDimensions)
+            , Slider.max (maxZoom imageDimensions)
             , Slider.step (zoomStep imageDimensions)
             , Slider.onChange ZoomChange
             ]
@@ -763,11 +746,11 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
 
         scaledImageCanvas =
             let
-                imageWidth =
-                    round (toFloat imageDimensions.width * settings.maxZoom)
+                maxPossibleImageWidth =
+                    round (toFloat imageDimensions.width * settings.maxZoomMultiplier)
 
-                imageHeight =
-                    round (toFloat imageDimensions.height * settings.maxZoom)
+                maxPossibleImageHeight =
+                    round (toFloat imageDimensions.height * settings.maxZoomMultiplier)
             in
             Canvas.draw
                 (Canvas.batch
@@ -778,7 +761,7 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
                             imageCanvas
                     ]
                 )
-                (Canvas.initialize (Size imageWidth imageHeight))
+                (Canvas.initialize (Size maxPossibleImageWidth maxPossibleImageHeight))
     in
     if isFinal == True then
         scaledImageCanvas
@@ -803,6 +786,11 @@ ratioImageToContainer imageDimensions =
 defaultZoom : ImageDimensions -> Float
 defaultZoom imageDimensions =
     ratioImageToContainer imageDimensions
+
+
+maxZoom : ImageDimensions -> Float
+maxZoom imageDimensions =
+    defaultZoom imageDimensions * settings.maxZoomMultiplier
 
 
 zoomStep : ImageDimensions -> Float

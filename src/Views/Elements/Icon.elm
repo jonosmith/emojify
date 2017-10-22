@@ -6,9 +6,9 @@ module Views.Elements.Icon
 {-| Simple reusable icon element designed for using Icomoon icons
 -}
 
-import Element exposing (Attribute, Element, el, empty, node)
-import Element.Attributes as Attributes exposing (class)
-import Styles exposing (Styles, Variations)
+import Element exposing (Element, el, empty, node)
+import Element.Attributes exposing (class)
+import Styles exposing (Styles)
 
 
 view : String -> Element Styles variation msg
