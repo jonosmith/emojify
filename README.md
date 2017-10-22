@@ -2,7 +2,7 @@
 
 A simple app I built to learn [Elm](http://elm-lang.org/) that creates 128x128 emojis/icons from a given image file.
 
-![Demo screen of app](/src/public/app_screenshot.png)
+![Demo screen of app](/public/app_screenshot.png)
 
 ## Setup
 
