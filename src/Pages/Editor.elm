@@ -76,7 +76,7 @@ type alias Position =
 
 type alias Settings =
     { containerSize : Int
-    , maxZoom : Float
+    , maxZoomMultiplier : Float
     , outputSize : Int
     , outputMimetype : String
     , outputQuality : Float
@@ -86,7 +86,7 @@ type alias Settings =
 settings : Settings
 settings =
     { containerSize = 300
-    , maxZoom = 2.0
+    , maxZoomMultiplier = 2.0
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
@@ -577,20 +577,13 @@ viewMoveControls =
 
 viewZoomControls : Zoom -> ImageDimensions -> Element Styles Variations Msg
 viewZoomControls zoom imageDimensions =
-    let
-        minZoom =
-            zoomStep imageDimensions
-
-        maxZoom =
-            settings.maxZoom
-    in
     row Styles.None
         [ spacing 20 ]
         [ Button.view [ Button.secondary, Button.small, Button.onClick ZoomOut ] (text "-")
         , Slider.view
             (fromFloat zoom)
-            [ Slider.min minZoom
-            , Slider.max maxZoom
+            [ Slider.min (zoomStep imageDimensions)
+            , Slider.max (maxZoom imageDimensions)
             , Slider.step (zoomStep imageDimensions)
             , Slider.onChange ZoomChange
             ]
@@ -753,11 +746,11 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
 
         scaledImageCanvas =
             let
-                imageWidth =
-                    round (toFloat imageDimensions.width * settings.maxZoom)
+                maxPossibleImageWidth =
+                    round (toFloat imageDimensions.width * settings.maxZoomMultiplier)
 
-                imageHeight =
-                    round (toFloat imageDimensions.height * settings.maxZoom)
+                maxPossibleImageHeight =
+                    round (toFloat imageDimensions.height * settings.maxZoomMultiplier)
             in
             Canvas.draw
                 (Canvas.batch
@@ -768,7 +761,7 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
                             imageCanvas
                     ]
                 )
-                (Canvas.initialize (Size imageWidth imageHeight))
+                (Canvas.initialize (Size maxPossibleImageWidth maxPossibleImageHeight))
     in
     if isFinal == True then
         scaledImageCanvas
@@ -793,6 +786,11 @@ ratioImageToContainer imageDimensions =
 defaultZoom : ImageDimensions -> Float
 defaultZoom imageDimensions =
     ratioImageToContainer imageDimensions
+
+
+maxZoom : ImageDimensions -> Float
+maxZoom imageDimensions =
+    defaultZoom imageDimensions * settings.maxZoomMultiplier
 
 
 zoomStep : ImageDimensions -> Float
