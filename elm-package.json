@@ -2,6 +2,7 @@
     "version": "0.1.0",
     "summary": "A simple app to create 128x128 emojis/icons from image files",
     "repository": "https://github.com/jonosmith/emojify-web.git",
+    "homepage": "https://jonosmith.github.io/emojify",
     "license": "BSD3",
     "source-directories": [
         "src"
