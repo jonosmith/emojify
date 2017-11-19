@@ -4,21 +4,17 @@ module Main exposing (main)
 -}
 
 import Element exposing (Element)
-import Html exposing (Html)
-import Navigation exposing (Location)
+import Html exposing (Html, program)
 import Pages.Editor as Editor
 import Pages.Home as Home
-import Route
 import Styles exposing (Styles, Variations, stylesheet)
-import Util exposing (toTupleWith)
 
 
 -- MODEL
 
 
 type alias Model =
-    { app : AppModel
-    , page : PageModel
+    { page : PageModel
     }
 
 
@@ -27,44 +23,18 @@ type PageModel
     | Editor Editor.Model
 
 
-type alias AppModel =
-    { location : Maybe Location
-    , imageUrl : String
-    }
-
-
-
--- Setters
-
-
-setAppLocation : Location -> Model -> Model
-setAppLocation location model =
-    let
-        appModel =
-            model.app
-    in
-    { model | app = { appModel | location = Just location } }
-
-
 
 -- INIT
 
 
-init : Location -> ( Model, Cmd Msg )
-init location =
+init : ( Model, Cmd Msg )
+init =
     let
         model =
-            { app =
-                { location = Just location
-                , imageUrl = ""
-                }
-            , page = Home Home.init
+            { page = Home Home.init
             }
-
-        cmd =
-            Navigation.modifyUrl (Route.routeToString Route.Home)
     in
-    ( model, cmd )
+    ( model, Cmd.none )
 
 
 
@@ -73,7 +43,6 @@ init location =
 
 type Msg
     = NoOp
-    | SetRoute Location
     | PageHomeMsg Home.Msg
     | PageEditorMsg Editor.Msg
     | EditImage
@@ -82,9 +51,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetRoute location ->
-            goToNewLocation location model
-
         PageHomeMsg pageMsg ->
             case model.page of
                 Home homeModel ->
@@ -95,23 +61,16 @@ update msg model =
                         ( newModel, newCmd ) =
                             case msgFromPage of
                                 Home.ImageUploaded imageUrl ->
-                                    let
-                                        appModel =
-                                            model.app
-                                    in
-                                    { model | app = { appModel | imageUrl = imageUrl } }
-                                        |> toTupleWith (goToNewRoute Route.Editor)
+                                    handleNewImageUrl imageUrl { model | page = Home newPageModel }
 
                                 Home.NoOp ->
-                                    ( model, Cmd.none )
-
-                        newCommand =
-                            Cmd.batch
-                                [ Cmd.map PageHomeMsg newPageCmd
-                                , newCmd
-                                ]
+                                    let
+                                        newCommand =
+                                            Cmd.map PageHomeMsg newPageCmd
+                                    in
+                                    ( { model | page = Home newPageModel }, newCommand )
                     in
-                    ( { newModel | page = Home newPageModel }, newCommand )
+                    ( newModel, newCmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -120,10 +79,22 @@ update msg model =
             case model.page of
                 Editor editorModel ->
                     let
-                        ( newEditorModel, newPageMsg ) =
+                        ( ( newPageModel, newPageCmd ), msgFromPage ) =
                             Editor.update pageMsg editorModel
+
+                        ( newModel, newCmd ) =
+                            case msgFromPage of
+                                Editor.ResetApp ->
+                                    init
+
+                                Editor.NoOp ->
+                                    let
+                                        newCommand =
+                                            Cmd.map PageEditorMsg newPageCmd
+                                    in
+                                    ( { model | page = Editor newPageModel }, newCommand )
                     in
-                    ( { model | page = Editor newEditorModel }, newPageMsg )
+                    ( newModel, newCmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -135,35 +106,15 @@ update msg model =
             ( model, Cmd.none )
 
 
-goToNewRoute : Route.Route -> Cmd msg
-goToNewRoute route =
-    Navigation.newUrl (Route.routeToString route)
-
-
-goToNewLocation : Location -> Model -> ( Model, Cmd Msg )
-goToNewLocation location model =
+handleNewImageUrl : String -> Model -> ( Model, Cmd Msg )
+handleNewImageUrl imageUrl model =
     let
-        newModel =
-            setAppLocation location model
+        ( editorModel, editorCmd ) =
+            Editor.init (Just imageUrl)
     in
-    goToLocationPage location newModel
-
-
-goToLocationPage : Location -> Model -> ( Model, Cmd Msg )
-goToLocationPage location model =
-    case Route.parseLocation location of
-        Route.Editor ->
-            let
-                ( editorInitModel, editorInitCmd ) =
-                    Editor.init (Just model.app.imageUrl)
-
-                newCmd =
-                    Cmd.map PageEditorMsg editorInitCmd
-            in
-            ( { model | page = Editor editorInitModel }, newCmd )
-
-        _ ->
-            ( { model | page = Home Home.init }, Cmd.none )
+    ( { model | page = Editor editorModel }
+    , Cmd.map PageEditorMsg editorCmd
+    )
 
 
 
@@ -172,18 +123,12 @@ goToLocationPage location model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        pageSubscriptions =
-            case model.page of
-                Home _ ->
-                    Sub.none
+    case model.page of
+        Home _ ->
+            Sub.none
 
-                Editor editorModel ->
-                    Sub.map PageEditorMsg (Editor.subscriptions editorModel)
-    in
-    Sub.batch
-        [ pageSubscriptions
-        ]
+        Editor editorModel ->
+            Sub.map PageEditorMsg (Editor.subscriptions editorModel)
 
 
 
@@ -212,7 +157,7 @@ viewHome model =
 
 main : Program Never Model Msg
 main =
-    Navigation.program SetRoute
+    program
         { view = view
         , init = init
         , update = update

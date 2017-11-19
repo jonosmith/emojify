@@ -1,4 +1,4 @@
-module Pages.Editor exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Editor exposing (ExternalMsg(NoOp, ResetApp), Model, Msg, init, subscriptions, update, view)
 
 {-| Editor scene - responsible for manipulating the provided image and downloading it
 -}
@@ -8,9 +8,7 @@ import Element exposing (Element, column, el, empty, row, text)
 import Element.Attributes exposing (alignLeft, center, clip, fill, height, inlineStyle, px, spacing, verticalCenter, width)
 import Maybe exposing (Maybe(Just, Nothing))
 import Mouse
-import Navigation
 import Ports exposing (ImageDimensions)
-import Route
 import String.Extra exposing (fromFloat)
 import Styles exposing (Styles, Variations)
 import Task
@@ -37,6 +35,11 @@ type Msg
     | ZoomIn
     | ZoomOut
     | ZoomChange String
+
+
+type ExternalMsg
+    = NoOp
+    | ResetApp
 
 
 type CanvasDrawMode
@@ -213,7 +216,7 @@ setZoom zoom model =
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd msg )
+update : Msg -> Model -> ( ( Model, Cmd Msg ), ExternalMsg )
 update msg model =
     case msg of
         MousePositionChange position ->
@@ -234,7 +237,7 @@ update msg model =
                         Nothing ->
                             model
             in
-            ( newModel, Cmd.none )
+            ( ( newModel, Cmd.none ), NoOp )
 
         DragStart position ->
             let
@@ -243,7 +246,7 @@ update msg model =
                         |> setDragStart position.layerX position.layerY
                         |> setDragCurrent position.layerX position.layerY
             in
-            ( newModel, Cmd.none )
+            ( ( newModel, Cmd.none ), NoOp )
 
         DragEnd _ ->
             let
@@ -264,13 +267,13 @@ update msg model =
                         Nothing ->
                             model.position
             in
-            ( { model | position = newPosition, drag = Nothing }, Cmd.none )
+            ( ( { model | position = newPosition, drag = Nothing }, Cmd.none ), NoOp )
 
         ZoomIn ->
-            ( { model | zoom = model.zoom + zoomStep model.imageDimensions }, Cmd.none )
+            ( ( { model | zoom = model.zoom + zoomStep model.imageDimensions }, Cmd.none ), NoOp )
 
         ZoomOut ->
-            ( { model | zoom = model.zoom - zoomStep model.imageDimensions }, Cmd.none )
+            ( ( { model | zoom = model.zoom - zoomStep model.imageDimensions }, Cmd.none ), NoOp )
 
         ZoomChange newZoom ->
             let
@@ -286,19 +289,19 @@ update msg model =
                         _ ->
                             model
             in
-            ( newModel, Cmd.none )
+            ( ( newModel, Cmd.none ), NoOp )
 
         MoveDown ->
-            ( updatePositionByY 1 model, Cmd.none )
+            ( ( updatePositionByY 1 model, Cmd.none ), NoOp )
 
         MoveLeft ->
-            ( updatePositionByX -1 model, Cmd.none )
+            ( ( updatePositionByX -1 model, Cmd.none ), NoOp )
 
         MoveRight ->
-            ( updatePositionByX 1 model, Cmd.none )
+            ( ( updatePositionByX 1 model, Cmd.none ), NoOp )
 
         MoveUp ->
-            ( updatePositionByY -1 model, Cmd.none )
+            ( ( updatePositionByY -1 model, Cmd.none ), NoOp )
 
         DownloadImage ->
             let
@@ -314,7 +317,7 @@ update msg model =
                 newCmd =
                     Ports.downloadDataUrl imageDataUrl
             in
-            ( model, newCmd )
+            ( ( model, newCmd ), NoOp )
 
         ImageLoaded (Ok canvas) ->
             let
@@ -322,17 +325,13 @@ update msg model =
                     model
                         |> setCanvasWithImage (Just canvas)
             in
-            ( newModel, Cmd.none )
+            ( ( newModel, Cmd.none ), NoOp )
 
         ImageLoaded (Err _) ->
-            ( setHasImageLoadFailed True model, Cmd.none )
+            ( ( setHasImageLoadFailed True model, Cmd.none ), NoOp )
 
         NavigateHome ->
-            let
-                newCmd =
-                    Navigation.newUrl (Route.routeToString Route.Home)
-            in
-            ( model, newCmd )
+            ( ( model, Cmd.none ), ResetApp )
 
         ImageDimensionsResponse imageDimensions ->
             let
@@ -341,7 +340,7 @@ update msg model =
                         |> setImageDimensions imageDimensions
                         |> setZoom (defaultZoom imageDimensions)
             in
-            ( newModel, Cmd.none )
+            ( ( newModel, Cmd.none ), NoOp )
 
 
 updatePositionByX : Int -> Model -> Model
