@@ -34,7 +34,7 @@ type Msg
     | NavigateHome
     | ZoomIn
     | ZoomOut
-    | ZoomChange String
+    | SliderValueChange String
 
 
 type ExternalMsg
@@ -54,7 +54,7 @@ type CanvasDrawMode
 type alias Model =
     { drag : Maybe Drag
     , position : Position
-    , zoom : Zoom
+    , sliderValue : Float
     , imageDimensions : ImageDimensions
     , canvasWithImage : Maybe Canvas
     , hasImageLoadFailed : Bool
@@ -79,20 +79,22 @@ type alias Position =
 
 type alias Settings =
     { containerSize : Int
-    , maxZoomMultiplier : Float
     , outputSize : Int
     , outputMimetype : String
     , outputQuality : Float
+    , sliderDefault : Float
+    , sliderMax : Float
     }
 
 
 settings : Settings
 settings =
     { containerSize = 300
-    , maxZoomMultiplier = 2.0
     , outputSize = 128
     , outputMimetype = "image/png"
     , outputQuality = 0.92
+    , sliderDefault = 1
+    , sliderMax = 4
     }
 
 
@@ -102,7 +104,7 @@ init maybeUrl =
         model =
             { drag = Nothing
             , position = initPosition
-            , zoom = 1.0
+            , sliderValue = 1.0
             , imageDimensions = initImageDimensions
             , canvasWithImage = Nothing
             , hasImageLoadFailed = False
@@ -207,9 +209,9 @@ setImageDimensions imageDimensions model =
     { model | imageDimensions = imageDimensions }
 
 
-setZoom : Zoom -> Model -> Model
-setZoom zoom model =
-    { model | zoom = zoom }
+setSliderValue : Float -> Model -> Model
+setSliderValue sliderValue model =
+    { model | sliderValue = sliderValue }
 
 
 
@@ -270,21 +272,21 @@ update msg model =
             ( ( { model | position = newPosition, drag = Nothing }, Cmd.none ), NoOp )
 
         ZoomIn ->
-            ( ( { model | zoom = model.zoom + zoomStep model.imageDimensions }, Cmd.none ), NoOp )
+            ( ( { model | sliderValue = model.sliderValue + zoomStep model.imageDimensions }, Cmd.none ), NoOp )
 
         ZoomOut ->
-            ( ( { model | zoom = model.zoom - zoomStep model.imageDimensions }, Cmd.none ), NoOp )
+            ( ( { model | sliderValue = model.sliderValue - zoomStep model.imageDimensions }, Cmd.none ), NoOp )
 
-        ZoomChange newZoom ->
+        SliderValueChange newSliderValue ->
             let
                 convertedResult =
-                    String.toFloat newZoom
+                    String.toFloat newSliderValue
 
                 newModel =
                     case convertedResult of
-                        Ok zoomAsFloat ->
+                        Ok sliderValueAsFloat ->
                             model
-                                |> setZoom zoomAsFloat
+                                |> setSliderValue sliderValueAsFloat
 
                         _ ->
                             model
@@ -338,7 +340,7 @@ update msg model =
                 newModel =
                     model
                         |> setImageDimensions imageDimensions
-                        |> setZoom (defaultZoom imageDimensions)
+                        |> setSliderValue settings.sliderDefault
             in
             ( ( newModel, Cmd.none ), NoOp )
 
@@ -512,7 +514,7 @@ viewControls model =
     in
     column Styles.None
         [ spacing 20, width (fill 1.0) ]
-        [ viewZoomControls model.zoom model.imageDimensions
+        [ viewZoomControls model.sliderValue model.imageDimensions
         , row Styles.None
             []
             [ Button.withIcon
@@ -574,17 +576,17 @@ viewMoveControls =
         ]
 
 
-viewZoomControls : Zoom -> ImageDimensions -> Element Styles Variations Msg
-viewZoomControls zoom imageDimensions =
+viewZoomControls : Float -> ImageDimensions -> Element Styles Variations Msg
+viewZoomControls sliderValue imageDimensions =
     row Styles.None
         [ spacing 20 ]
         [ Button.view [ Button.secondary, Button.small, Button.onClick ZoomOut ] (text "-")
         , Slider.view
-            (fromFloat zoom)
+            (fromFloat sliderValue)
             [ Slider.min (zoomStep imageDimensions)
-            , Slider.max (maxZoom imageDimensions)
+            , Slider.max settings.sliderMax
             , Slider.step (zoomStep imageDimensions)
-            , Slider.onChange ZoomChange
+            , Slider.onChange SliderValueChange
             ]
         , Button.view [ Button.secondary, Button.small, Button.onClick ZoomIn ] (text "+")
         ]
@@ -606,7 +608,7 @@ drawPreviewCanvas model canvasWithImage =
         , drag = model.drag
         , position = model.position
         , imageDimensions = model.imageDimensions
-        , scaleFactor = model.zoom
+        , scaleFactor = sliderValueToZoom model.sliderValue model.imageDimensions
         , outputSize = settings.containerSize
         , canvasWithImage = canvasWithImage
         }
@@ -616,13 +618,13 @@ drawDownloadCanvas : Model -> Canvas -> Canvas
 drawDownloadCanvas model canvasWithImage =
     let
         ratioZoomToContainerSize =
-            model.zoom / toFloat settings.containerSize
-
-        scaleFactor =
-            toFloat settings.outputSize * ratioZoomToContainerSize
+            model.sliderValue / toFloat settings.containerSize
 
         ratioOutputToContainer =
             toFloat settings.outputSize / toFloat settings.containerSize
+
+        scaleFactor =
+            sliderValueToZoom model.sliderValue model.imageDimensions * ratioOutputToContainer
 
         position =
             { x = ceiling (toFloat model.position.x * ratioOutputToContainer)
@@ -746,10 +748,10 @@ progressivelyScaleImageCanvas targetScale currentScale imageDimensions imageCanv
         scaledImageCanvas =
             let
                 maxPossibleImageWidth =
-                    round (toFloat imageDimensions.width * settings.maxZoomMultiplier)
+                    round (toFloat imageDimensions.width * 4)
 
                 maxPossibleImageHeight =
-                    round (toFloat imageDimensions.height * settings.maxZoomMultiplier)
+                    round (toFloat imageDimensions.height * 4)
             in
             Canvas.draw
                 (Canvas.batch
@@ -782,16 +784,6 @@ ratioImageToContainer imageDimensions =
     toFloat settings.containerSize / maxImageDimension imageDimensions
 
 
-defaultZoom : ImageDimensions -> Float
-defaultZoom imageDimensions =
-    ratioImageToContainer imageDimensions
-
-
-maxZoom : ImageDimensions -> Float
-maxZoom imageDimensions =
-    defaultZoom imageDimensions * settings.maxZoomMultiplier
-
-
 zoomStep : ImageDimensions -> Float
 zoomStep imageDimensions =
     let
@@ -802,3 +794,8 @@ zoomStep imageDimensions =
             ratioImageToContainer imageDimensions
     in
     desiredStep * imageResolutionModifier
+
+
+sliderValueToZoom : number -> ImageDimensions -> number
+sliderValueToZoom sliderValue imageDimensions =
+    (2 ^ sliderValue - 1) * ratioImageToContainer imageDimensions
